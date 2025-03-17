@@ -21,16 +21,45 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
 
   if (!isOpen) return null;
 
-  // Function to handle calendar date click
-  const handleCalendarDateClick = (date: Date) => {
-    console.log("Selected Date:", date);
-    // You can filter the schedule for the selected date here
+  const getDateStatus = (date: Date) => {
+    const dateString = date.toISOString().split("T")[0];
+    const shiftsOnDate = team.schedule.filter(
+      (shift) => shift.date === dateString
+    );
+    if (shiftsOnDate.length === 0) {
+      return "unavailable";
+    }
+
+    const isAvailable = shiftsOnDate.some((shift) => shift.is_available);
+    const isBooked = shiftsOnDate.some((shift) => !shift.is_available);
+
+    if (isBooked) {
+      return "booked";
+    } else if (isAvailable) {
+      return "available";
+    } else {
+      return "unavailable";
+    }
+  };
+
+  const tileClassName = ({ date }: { date: Date }) => {
+    const status = getDateStatus(date);
+
+    switch (status) {
+      case "available":
+        return "bg-green-100 text-green-800";
+      case "booked":
+        return "bg-blue-100 text-blue-800";
+      case "unavailable":
+        return "bg-red-100 text-red-800";
+      default:
+        return "";
+    }
   };
 
   return (
-    <div className='fixed inset-0 bg-gray-500 z-50 flex items-center justify-center p-4'>
+    <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4'>
       <div className='bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col'>
-        {/* Header */}
         <div className='flex justify-between items-center border-b p-4'>
           <div>
             <h2 className='text-xl font-bold'>{team.name}</h2>
@@ -67,7 +96,6 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
           </div>
         </div>
 
-        {/* Tabs */}
         <div className='flex border-b overflow-x-auto'>
           <button
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
@@ -107,9 +135,7 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
           </button>
         </div>
 
-        {/* Content */}
         <div className='flex-1 overflow-y-auto p-4'>
-          {/* Members Tab */}
           {activeTab === "members" && (
             <div>
               <div className='flex justify-between mb-4'>
@@ -172,7 +198,6 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
             </div>
           )}
 
-          {/* Schedule Tab */}
           {activeTab === "schedule" && (
             <div>
               <div className='flex justify-between mb-4'>
@@ -192,8 +217,9 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
               {showCalendar ? (
                 <div className='flex justify-center'>
                   <Calendar
-                    onChange={(date) => handleCalendarDateClick(date as Date)}
+                    onChange={(date) => console.log("Selected Date:", date)}
                     value={new Date()}
+                    tileClassName={tileClassName}
                     className='border rounded-lg p-2'
                   />
                 </div>
@@ -274,7 +300,6 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
             </div>
           )}
 
-          {/* Equipment & Vehicle Tab */}
           {activeTab === "equipment" && (
             <div>
               <div className='flex justify-between mb-4'>
@@ -353,7 +378,6 @@ const TeamRosterDetail: React.FC<TeamRosterDetailProps> = ({
             </div>
           )}
 
-          {/* Team Info Tab */}
           {activeTab === "info" && (
             <div>
               <div className='flex justify-between mb-4'>
