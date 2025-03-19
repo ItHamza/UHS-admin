@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import CustomerDetail from "./CustomerDetails";
+import CustomerAction from "@/actions/customer";
 
 interface Customer {
   id: string;
@@ -12,10 +13,10 @@ interface Customer {
   type: "residential" | "commercial";
   services: string[];
   totalBookings: number;
-  lastBooking: string;
+  lastServiceDate: string;
   totalSpent: number;
   notes: string;
-  status: "active" | "inactive";
+  status: "Active" | "Inactive";
   joinDate: string;
 }
 
@@ -25,104 +26,119 @@ const CustomersList: React.FC = () => {
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    startTransition(async () => {
+      try {
+        const data = await CustomerAction();
+
+        setCustomers(data);
+      } catch (error) {
+        console.error("Failed to fetch customers:", error);
+      }
+    });
+  }, []);
   // Sample data
-  const customers: Customer[] = [
-    {
-      id: "C-10245",
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      phone: "(555) 123-4567",
-      address: "123 Main St, Anytown, CA 94105",
-      type: "residential",
-      services: ["Regular Cleaning", "Deep Cleaning"],
-      totalBookings: 12,
-      lastBooking: "2025-03-15",
-      totalSpent: 1450,
-      notes:
-        "Prefers cleaning on weekends. Has a dog that should be kept in the backyard during service.",
-      status: "active",
-      joinDate: "2024-06-10",
-    },
-    {
-      id: "C-10246",
-      name: "Maria Garcia",
-      email: "maria.g@example.com",
-      phone: "(555) 234-5678",
-      address: "456 Oak Ave, Somewhere, CA 94107",
-      type: "residential",
-      services: ["Deep Cleaning", "Move In/Out"],
-      totalBookings: 8,
-      lastBooking: "2025-03-12",
-      totalSpent: 980,
-      notes:
-        "Allergic to strong cleaning products. Prefers eco-friendly options.",
-      status: "active",
-      joinDate: "2024-08-22",
-    },
-    {
-      id: "C-10252",
-      name: "TechCorp Inc.",
-      email: "facilities@techcorp.com",
-      phone: "(555) 789-0123",
-      address: "789 Business Blvd, Downtown, CA 94111",
-      type: "commercial",
-      services: ["Regular Cleaning", "Special Events"],
-      totalBookings: 24,
-      lastBooking: "2025-03-16",
-      totalSpent: 5200,
-      notes:
-        "Weekly office cleaning on Mondays and Thursdays. Special attention to conference rooms.",
-      status: "active",
-      joinDate: "2024-05-01",
-    },
-    {
-      id: "C-10273",
-      name: "James Wilson",
-      email: "jwilson@example.com",
-      phone: "(555) 345-6789",
-      address: "321 Cedar Ln, Elsewhere, CA 94110",
-      type: "residential",
-      services: ["Post-Construction", "Deep Cleaning"],
-      totalBookings: 5,
-      lastBooking: "2025-02-28",
-      totalSpent: 860,
-      notes:
-        "Recently renovated home. Needs special care for new wooden floors.",
-      status: "active",
-      joinDate: "2024-11-05",
-    },
-    {
-      id: "C-10291",
-      name: "Riverfront Restaurant",
-      email: "manager@riverfront.com",
-      phone: "(555) 456-7890",
-      address: "159 River St, Waterside, CA 94133",
-      type: "commercial",
-      services: ["Regular Cleaning", "Deep Cleaning", "Special Events"],
-      totalBookings: 18,
-      lastBooking: "2025-03-14",
-      totalSpent: 4150,
-      notes:
-        "Early morning cleaning before 6 AM. Strict health code compliance required.",
-      status: "active",
-      joinDate: "2024-07-15",
-    },
-    {
-      id: "C-10234",
-      name: "Emily Chen",
-      email: "emily.chen@example.com",
-      phone: "(555) 567-8901",
-      address: "753 Maple Dr, Suburb, CA 94112",
-      type: "residential",
-      services: ["Regular Cleaning"],
-      totalBookings: 3,
-      lastBooking: "2025-01-20",
-      totalSpent: 320,
-      notes: "Has cats. Please ensure doors are kept closed at all times.",
-      status: "inactive",
-      joinDate: "2024-12-10",
-    },
-  ];
+  // const customers: Customer[] = [
+  //   {
+  //     id: "C-10245",
+  //     name: "Alex Johnson",
+  //     email: "alex.johnson@example.com",
+  //     phone: "(555) 123-4567",
+  //     address: "123 Main St, Anytown, CA 94105",
+  //     type: "residential",
+  //     services: ["Regular Cleaning", "Deep Cleaning"],
+  //     totalBookings: 12,
+  //     lastBooking: "2025-03-15",
+  //     totalSpent: 1450,
+  //     notes:
+  //       "Prefers cleaning on weekends. Has a dog that should be kept in the backyard during service.",
+  //     status: "active",
+  //     joinDate: "2024-06-10",
+  //   },
+  //   {
+  //     id: "C-10246",
+  //     name: "Maria Garcia",
+  //     email: "maria.g@example.com",
+  //     phone: "(555) 234-5678",
+  //     address: "456 Oak Ave, Somewhere, CA 94107",
+  //     type: "residential",
+  //     services: ["Deep Cleaning", "Move In/Out"],
+  //     totalBookings: 8,
+  //     lastBooking: "2025-03-12",
+  //     totalSpent: 980,
+  //     notes:
+  //       "Allergic to strong cleaning products. Prefers eco-friendly options.",
+  //     status: "active",
+  //     joinDate: "2024-08-22",
+  //   },
+  //   {
+  //     id: "C-10252",
+  //     name: "TechCorp Inc.",
+  //     email: "facilities@techcorp.com",
+  //     phone: "(555) 789-0123",
+  //     address: "789 Business Blvd, Downtown, CA 94111",
+  //     type: "commercial",
+  //     services: ["Regular Cleaning", "Special Events"],
+  //     totalBookings: 24,
+  //     lastBooking: "2025-03-16",
+  //     totalSpent: 5200,
+  //     notes:
+  //       "Weekly office cleaning on Mondays and Thursdays. Special attention to conference rooms.",
+  //     status: "active",
+  //     joinDate: "2024-05-01",
+  //   },
+  //   {
+  //     id: "C-10273",
+  //     name: "James Wilson",
+  //     email: "jwilson@example.com",
+  //     phone: "(555) 345-6789",
+  //     address: "321 Cedar Ln, Elsewhere, CA 94110",
+  //     type: "residential",
+  //     services: ["Post-Construction", "Deep Cleaning"],
+  //     totalBookings: 5,
+  //     lastBooking: "2025-02-28",
+  //     totalSpent: 860,
+  //     notes:
+  //       "Recently renovated home. Needs special care for new wooden floors.",
+  //     status: "active",
+  //     joinDate: "2024-11-05",
+  //   },
+  //   {
+  //     id: "C-10291",
+  //     name: "Riverfront Restaurant",
+  //     email: "manager@riverfront.com",
+  //     phone: "(555) 456-7890",
+  //     address: "159 River St, Waterside, CA 94133",
+  //     type: "commercial",
+  //     services: ["Regular Cleaning", "Deep Cleaning", "Special Events"],
+  //     totalBookings: 18,
+  //     lastBooking: "2025-03-14",
+  //     totalSpent: 4150,
+  //     notes:
+  //       "Early morning cleaning before 6 AM. Strict health code compliance required.",
+  //     status: "active",
+  //     joinDate: "2024-07-15",
+  //   },
+  //   {
+  //     id: "C-10234",
+  //     name: "Emily Chen",
+  //     email: "emily.chen@example.com",
+  //     phone: "(555) 567-8901",
+  //     address: "753 Maple Dr, Suburb, CA 94112",
+  //     type: "residential",
+  //     services: ["Regular Cleaning"],
+  //     totalBookings: 3,
+  //     lastBooking: "2025-01-20",
+  //     totalSpent: 320,
+  //     notes: "Has cats. Please ensure doors are kept closed at all times.",
+  //     status: "inactive",
+  //     joinDate: "2024-12-10",
+  //   },
+  // ];
 
   const handleViewCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -133,121 +149,166 @@ const CustomersList: React.FC = () => {
     setIsDetailOpen(false);
   };
 
+  const ShimmerTable = () => (
+    <div className='animate-pulse'>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className='flex space-x-4 p-4 border-b'>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
+          <div className='w-40 h-6 bg-gray-300 rounded'></div>
+          <div className='w-40 h-6 bg-gray-300 rounded'></div>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const ShimmerHeader = () => (
+    <div className='animate-pulse'>
+      <div className='flex justify-between items-center p-4 border-b'>
+        <h2 className='text-lg bg-gray-300 font-medium h-6 w-28'></h2>
+        <span className='text-sm bg-gray-300 text-gray-500  h-6 w-20'></span>
+      </div>
+    </div>
+  );
+
   return (
     <div className='bg-white rounded-lg shadow overflow-hidden'>
-      <div className='flex justify-between items-center p-4 border-b'>
-        <h2 className='text-lg font-medium'>Customer Directory</h2>
-        <span className='text-sm text-gray-500'>
-          {customers.length} customers
-        </span>
-      </div>
-
-      <div className='overflow-x-auto'>
-        <table className='min-w-full divide-y divide-gray-200'>
-          <thead className='bg-gray-50'>
-            <tr>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Customer
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Contact Info
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Type
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Services
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Bookings
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Status
-              </th>
-              <th
-                scope='col'
-                className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className='bg-white divide-y divide-gray-200'>
-            {customers.map((customer) => (
-              <tr key={customer.id} className='hover:bg-gray-50'>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <div className='flex items-center'>
-                    <div>
-                      <div className='text-sm font-medium text-gray-900'>
-                        {customer.name}
-                      </div>
-                      <div className='text-sm text-gray-500'>{customer.id}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <div className='text-sm text-gray-900'>{customer.email}</div>
-                  <div className='text-sm text-gray-500'>{customer.phone}</div>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      customer.type === "commercial"
-                        ? "bg-blue-100 text-blue-800"
-                        : "bg-green-100 text-green-800"
-                    }`}>
-                    {customer.type === "commercial"
-                      ? "Commercial"
-                      : "Residential"}
-                  </span>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <div className='text-sm text-gray-900'>
-                    {customer.services.slice(0, 2).join(", ")}
-                    {customer.services.length > 2 && "..."}
-                  </div>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <div className='text-sm text-gray-900'>
-                    {customer.totalBookings} total
-                  </div>
-                  <div className='text-sm text-gray-500'>
-                    Last: {new Date(customer.lastBooking).toLocaleDateString()}
-                  </div>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap'>
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      customer.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}>
-                    {customer.status === "active" ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                  <button
-                    onClick={() => handleViewCustomer(customer)}
-                    className='text-indigo-600 hover:text-indigo-900'>
-                    View Details
-                  </button>
-                </td>
+      {isPending ? (
+        <ShimmerHeader />
+      ) : (
+        <div className='flex justify-between items-center p-4 border-b'>
+          <h2 className='text-lg font-medium'>Customer Directory</h2>
+          <span className='text-sm text-gray-500'>
+            {customers.length} customers
+          </span>
+        </div>
+      )}
+      {isPending ? (
+        <ShimmerTable />
+      ) : (
+        <div className='overflow-x-auto'>
+          <table className='min-w-full divide-y divide-gray-200'>
+            <thead className='bg-gray-50'>
+              <tr>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Customer
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Contact Info
+                </th>
+                {/* <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Type
+                </th> */}
+                {/* <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Services
+                </th> */}
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Bookings
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Status
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className='bg-white divide-y divide-gray-200'>
+              {customers.map((customer) => (
+                <tr key={customer.id} className='hover:bg-gray-50'>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='flex items-center'>
+                      <div>
+                        <div className='text-sm font-medium text-gray-900'>
+                          {customer.name}
+                        </div>
+                        <div className='text-sm text-gray-500'>
+                          {customer.id}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='text-sm text-gray-900'>
+                      {customer.email}
+                    </div>
+                    <div className='text-sm text-gray-500'>
+                      {customer.phone}
+                    </div>
+                  </td>
+                  {/* <td className='px-6 py-4 whitespace-nowrap'>
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        customer.type === "commercial"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-green-100 text-green-800"
+                      }`}>
+                      {customer.type === "commercial"
+                        ? "Commercial"
+                        : "Residential"}
+                    </span>
+                  </td> */}
+                  {/* <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='text-sm text-gray-900'>
+                      {customer.services.slice(0, 2).join(", ")}
+                      {customer.services.length > 2 && "..."}
+                    </div>
+                  </td> */}
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <div className='text-sm text-gray-900'>
+                      {customer.totalBookings} total
+                    </div>
+                    <div className='text-sm text-gray-500'>
+                      Last:{" "}
+                      {new Date(
+                        customer.lastServiceDate
+                      ).toLocaleDateString() === "Invalid Date"
+                        ? customer.lastServiceDate
+                        : new Date(
+                            customer.lastServiceDate
+                          ).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap'>
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        customer.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                      {customer.status === "Active" ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                    <button
+                      onClick={() => handleViewCustomer(customer)}
+                      className='text-indigo-600 hover:text-indigo-900'>
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Pagination could go here */}
       <div className='bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6'>

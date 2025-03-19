@@ -12,4 +12,6 @@ export interface Schedule {
   notes: string;
   createdAt: string;
   lastUpdated: string;
+  duration: string;
+  status: string;
 }

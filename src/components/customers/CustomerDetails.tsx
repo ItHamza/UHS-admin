@@ -9,10 +9,10 @@ interface Customer {
   type: "residential" | "commercial";
   services: string[];
   totalBookings: number;
-  lastBooking: string;
+  lastServiceDate: string;
   totalSpent: number;
   notes: string;
-  status: "active" | "inactive";
+  status: "Active" | "Inactive";
   joinDate: string;
 }
 
@@ -51,11 +51,11 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer }) => {
         <div className='mb-4'>
           <span
             className={`px-2 py-1 text-xs font-semibold rounded-full ${
-              customer.status === "active"
+              customer.status === "Active"
                 ? "bg-green-100 text-green-800"
                 : "bg-gray-100 text-gray-800"
             }`}>
-            {customer.status === "active" ? "Active" : "Inactive"}
+            {customer.status === "Active" ? "Active" : "Inactive"}
           </span>
           <span className='text-sm text-gray-500 ml-2'>
             Customer since {formatDate(customer.joinDate)}
@@ -144,7 +144,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer }) => {
         <div className='mb-4'>
           <p className='text-sm text-gray-500'>Last Booking</p>
           <p className='text-sm font-medium'>
-            {formatDate(customer.lastBooking)}
+            {formatDate(customer.lastServiceDate)}
           </p>
         </div>
       </div>
