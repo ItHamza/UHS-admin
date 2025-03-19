@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import moment from "moment";
-import { formatTime } from "../roster/route";
+import { formatTime } from "@/utils/format-time";
 
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";

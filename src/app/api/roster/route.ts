@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-export const formatTime = (time: string): string => {
+const formatTime = (time: string): string => {
   const [hours, minutes] = time.split(":");
   const parsedHours = parseInt(hours, 10);
   const suffix = parsedHours >= 12 ? "PM" : "AM";

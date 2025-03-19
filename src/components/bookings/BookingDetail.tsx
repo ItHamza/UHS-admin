@@ -38,11 +38,11 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             <div className='flex items-center mb-3'>
               <div className='bg-indigo-100 rounded-full h-10 w-10 flex items-center justify-center mr-3'>
                 <span className='text-indigo-800 font-medium'>
-                  {booking.customerName.charAt(0)}
+                  {booking.customer.charAt(0)}
                 </span>
               </div>
               <div>
-                <h4 className='text-md font-medium'>{booking.customerName}</h4>
+                <h4 className='text-md font-medium'>{booking.customer}</h4>
                 <span
                   className={`inline-flex px-2 text-xs leading-5 font-semibold rounded-full ${
                     booking.customerType === "commercial"
@@ -76,7 +76,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             <div className='grid grid-cols-2 gap-4 mb-4'>
               <div>
                 <p className='text-sm text-gray-500'>Service Type</p>
-                <p className='font-medium'>{booking.serviceType}</p>
+                <p className='font-medium'>{booking.frequency}</p>
               </div>
               <div>
                 <p className='text-sm text-gray-500'>Price</p>
@@ -107,7 +107,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
           </h3>
           <div className='bg-gray-50 p-4 rounded-lg'>
             <ul className='divide-y divide-gray-200'>
-              {booking.teamMembers.map((member, index) => (
+              {/* {booking.team.map((member, index) => (
                 <li key={index} className='py-2 flex items-center'>
                   <div className='bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center mr-3'>
                     <span className='text-gray-600 font-medium text-sm'>
@@ -119,7 +119,8 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
                   </div>
                   <span>{member}</span>
                 </li>
-              ))}
+              ))} */}
+              <span>{booking.team}</span>
             </ul>
           </div>
         </div>
