@@ -43,6 +43,11 @@ interface ScheduleData {
   is_blocked: boolean;
   is_available: boolean;
   team_id: string;
+  apartment_number: string | null;
+  residence_type: { id: string; type: string } | null;
+  property: { id: string; name: string } | null;
+  district: { id: string; name: string } | null;
+  area: { id: string; name: string } | null;
 }
 
 interface Schedule {
@@ -52,16 +57,32 @@ interface Schedule {
   date: string;
   startTime: string;
   endTime: string;
-  area: string;
   status: StatusType;
   bookedBy: string | null;
   blockedBy: string | null;
+  apartment_number: string | null;
+  residence_type: { id: string; type: string } | null;
+  property: { id: string; name: string } | null;
+  district: { id: string; name: string } | null;
+  area: { id: string; name: string } | null;
 }
 
 interface ScheduleDetailsViewProps {
   schedule: Schedule;
   onBack: () => void;
 }
+
+const formatLocation = (schedule: Schedule): string => {
+  const parts = [];
+
+  if (schedule.apartment_number) parts.push(`Apt ${schedule.apartment_number}`);
+  if (schedule.residence_type?.type) parts.push(schedule.residence_type.type);
+  if (schedule.property?.name) parts.push(schedule.property.name);
+  if (schedule.district?.name) parts.push(schedule.district.name);
+  if (schedule.area) parts.push(schedule.area.name);
+
+  return parts.length > 0 ? parts.join(", ") : "No location specified";
+};
 
 const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
   schedule,
@@ -102,7 +123,9 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
           <div className='space-y-4'>
             <div>
               <h3 className='text-sm font-medium text-gray-500'>Location</h3>
-              <p className='text-lg font-semibold'>{schedule.area}</p>
+              <p className='text-lg font-semibold'>
+                {formatLocation(schedule)}
+              </p>
             </div>
 
             <div>
@@ -272,6 +295,7 @@ interface TooltipProps {
   onClose: () => void;
   onViewDetails: (schedule: Schedule) => void;
 }
+
 const ScheduleTooltip: React.FC<TooltipProps> = ({
   schedules,
   position,
@@ -319,8 +343,8 @@ const ScheduleTooltip: React.FC<TooltipProps> = ({
               {selectedTeam?.startTime} - {selectedTeam?.endTime}
             </div>
             <div>
-              <span className='font-medium'>Area:</span>{" "}
-              {selectedTeam?.area || "Not specified"}
+              <span className='font-medium'>Location:</span>{" "}
+              {selectedTeam ? formatLocation(selectedTeam) : "Not specified"}
             </div>
             <div>
               <span className='font-medium'>Status:</span>{" "}
@@ -370,7 +394,7 @@ const getUniqueSchedules = (schedules: Schedule[], dayStr: string) => {
   const daySchedules = schedules.filter((s) => s.date === dayStr);
   const groups: Record<string, Schedule[]> = {};
   daySchedules.forEach((schedule) => {
-    const key = `${schedule.teamName}-${schedule.startTime}-${schedule.endTime}`;
+    const key = `${schedule.startTime}-${schedule.endTime}`;
     if (!groups[key]) {
       groups[key] = [];
     }
@@ -389,40 +413,37 @@ const ScheduleGroups: React.FC<{
     const endHour = timeToHours(group[0].endTime);
     return startHour <= hour && endHour > hour;
   });
+
   const schedulesToShow = schedulesInHour.filter((group) => {
     return timeToHours(group[0].startTime) === hour;
   });
+
   return (
     <div className='space-y-1'>
       {schedulesToShow.map((group, idx) => (
-        <div
-          key={idx}
-          className={`rounded p-2 text-xs text-white cursor-pointer ${
-            group.length > 1 ? "bg-blue-800" : statusColors[group[0].status]
-          }`}
-          style={{
-            height: "auto",
-            gridRowStart: `span ${
-              timeToHours(group[0].endTime) - timeToHours(group[0].startTime)
-            }`,
-          }}
-          onClick={(e) => onClick(group, e)}>
-          {group.length > 1 ? (
-            <div>
-              <div className='font-bold'>{group.length} Teams</div>
+        <div key={idx} className='space-y-1'>
+          {group.map((schedule, scheduleIdx) => (
+            <div
+              key={`${idx}-${scheduleIdx}`}
+              className={`rounded p-2 text-xs text-white cursor-pointer ${
+                statusColors[schedule.status]
+              }`}
+              style={{
+                height: "auto",
+                gridRowStart: `span ${
+                  timeToHours(schedule.endTime) -
+                  timeToHours(schedule.startTime)
+                }`,
+              }}
+              onClick={(e) => onClick([schedule], e)}>
+              <div className='font-bold'>{schedule.teamName}</div>
+              <div>{schedule.status}</div>
               <div>
-                {group[0].startTime} - {group[0].endTime}
+                {schedule.startTime} - {schedule.endTime}
               </div>
+              <div className='text-xs truncate'>{schedule.property?.name}</div>
             </div>
-          ) : (
-            <div>
-              <div className='font-bold'>{group[0].teamName}</div>
-              <div>{group[0].status}</div>
-              <div>
-                {group[0].startTime} - {group[0].endTime}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
       ))}
     </div>
@@ -496,10 +517,14 @@ const ScheduleCalendar: React.FC = () => {
       date: item.date,
       startTime: item.start_time,
       endTime: item.end_time,
-      area: "General Area",
+      area: item.area || null,
       status: item.status,
       bookedBy: item.status === "Booked" ? "Customer" : null,
       blockedBy: item.is_blocked ? "Admin" : null,
+      apartment_number: item.apartment_number || null,
+      residence_type: item.residence_type || null,
+      property: item.property || null,
+      district: item.district || null,
     }));
   };
 
@@ -659,34 +684,26 @@ const ScheduleCalendar: React.FC = () => {
                   {dayScheduleGroups.length > 0 ? (
                     <div className='p-2 space-y-2'>
                       {dayScheduleGroups.map((group, idx) => (
-                        <div
-                          key={idx}
-                          className={`rounded p-2 text-sm text-white ${
-                            group.length > 1
-                              ? "bg-blue-800"
-                              : statusColors[group[0].status]
-                          }`}
-                          onClick={(e) => handleCardClick(group, e)}>
-                          {group.length > 1 ? (
-                            <div>
+                        <div key={idx} className='space-y-2'>
+                          {group.map((schedule, scheduleIdx) => (
+                            <div
+                              key={`${idx}-${scheduleIdx}`}
+                              className={`rounded p-2 text-sm text-white ${
+                                statusColors[schedule.status]
+                              }`}
+                              onClick={(e) => handleCardClick([schedule], e)}>
                               <div className='font-bold'>
-                                {group.length} Teams
+                                {schedule.teamName}
                               </div>
+                              <div>{schedule.status}</div>
                               <div>
-                                {group[0].startTime} - {group[0].endTime}
+                                {schedule.startTime} - {schedule.endTime}
+                              </div>
+                              <div className='text-xs mt-1 truncate'>
+                                {schedule.property?.name}
                               </div>
                             </div>
-                          ) : (
-                            <div>
-                              <div className='font-bold'>
-                                {group[0].teamName}
-                              </div>
-                              <div>{group[0].status}</div>
-                              <div>
-                                {group[0].startTime} - {group[0].endTime}
-                              </div>
-                            </div>
-                          )}
+                          ))}
                         </div>
                       ))}
                     </div>
