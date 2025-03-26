@@ -33,7 +33,26 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, phone, is_active, is_blocked } = await req.json();
+    const {
+      name,
+      email,
+      phone,
+      device_token,
+      device_type,
+      is_active,
+      is_blocked,
+      role,
+      area,
+      property,
+      district,
+      residenceType,
+      districtId,
+      propertyId,
+      residenceTypeId,
+      apartment_number,
+      lat,
+      lng,
+    } = await req.json();
 
     if (!name || !email || !phone) {
       return NextResponse.json(
@@ -44,7 +63,26 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const data = { name, email, phone, is_blocked, is_active };
+    const data = {
+      name,
+      email,
+      phone,
+      device_token,
+      device_type,
+      is_active,
+      is_blocked,
+      role,
+      area,
+      property,
+      district,
+      residenceType,
+      districtId,
+      propertyId,
+      residenceTypeId,
+      apartment_number,
+      lat,
+      lng,
+    };
     const userRes = await fetch(`${BASE_URL}/users`, {
       method: "POST",
       headers: {
