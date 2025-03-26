@@ -18,7 +18,7 @@ async function fetchPropertyById(propertyId: string) {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: any } }
+  { params }: { params: Promise<{ id: any }> }
 ) {
   try {
     const { id } = await params;
