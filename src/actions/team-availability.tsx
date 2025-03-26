@@ -1,3 +1,4 @@
+"use server";
 import { teamAvailabilities } from "@/lib/service/team-availabilities";
 
 export default async function TeamAvailabilityAction(ids: string[]) {

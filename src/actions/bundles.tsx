@@ -1,3 +1,4 @@
+"use server";
 // actions/BundlesAction.ts
 import { getBundles } from "@/lib/service/bundles"; // Adjust the import path as needed
 

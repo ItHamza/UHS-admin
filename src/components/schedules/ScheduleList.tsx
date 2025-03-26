@@ -89,6 +89,7 @@ const SchedulesList: React.FC = () => {
           <div className='w-20 h-6 bg-gray-300 rounded'></div>
           <div className='w-36 h-6 bg-gray-300 rounded'></div>
           <div className='w-24 h-6 bg-gray-300 rounded'></div>
+          <div className='w-24 h-6 bg-gray-300 rounded'></div>
         </div>
       ))}
     </div>

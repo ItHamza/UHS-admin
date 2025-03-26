@@ -1,3 +1,4 @@
+"use server";
 import { getSchedules } from "@/lib/service/schedules";
 
 export default async function ScheduleAction() {

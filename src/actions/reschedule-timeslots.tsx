@@ -1,3 +1,4 @@
+"use server";
 import { getRescheduleTimeslots } from "@/lib/service/reschedule-timeslots";
 
 export default async function RescheduleTimeslotsAction(

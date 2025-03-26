@@ -1,3 +1,4 @@
+"use server";
 import { getProperties, getPropertyById } from "@/lib/service/property";
 
 export async function PropertyAction(districtId: string | null) {

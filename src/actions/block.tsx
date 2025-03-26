@@ -1,3 +1,4 @@
+"use server";
 import { blockBooking } from "@/lib/service/block";
 
 export default async function BlockBookingAction(data: {

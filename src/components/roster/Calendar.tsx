@@ -7,6 +7,12 @@ import {
   X,
   Calendar as CalendarIcon,
   ArrowLeft,
+  Users,
+  MapPin,
+  Clock,
+  Star,
+  User,
+  Phone,
 } from "lucide-react";
 import {
   format,
@@ -48,6 +54,8 @@ interface ScheduleData {
   property: { id: string; name: string } | null;
   district: { id: string; name: string } | null;
   area: { id: string; name: string } | null;
+  members: any[];
+  user: any;
 }
 
 interface Schedule {
@@ -65,12 +73,38 @@ interface Schedule {
   property: { id: string; name: string } | null;
   district: { id: string; name: string } | null;
   area: { id: string; name: string } | null;
+  members: any[];
+  rating: number;
+  user: any;
 }
 
 interface ScheduleDetailsViewProps {
   schedule: Schedule;
   onBack: () => void;
 }
+
+const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
+  return (
+    <div className='flex items-center'>
+      {[...Array(5)].map((_, index) => (
+        <Star
+          key={index}
+          size={20}
+          className={`
+            ${index < Math.floor(rating) ? "text-yellow-500" : "text-gray-300"}
+            ${
+              index === Math.floor(rating) && rating % 1 >= 0.5
+                ? "text-yellow-300"
+                : ""
+            }
+          `}
+          fill={index < Math.floor(rating) ? "currentColor" : "none"}
+        />
+      ))}
+      <span className='ml-2 text-sm text-gray-600'>({rating.toFixed(1)})</span>
+    </div>
+  );
+};
 
 const formatLocation = (schedule: Schedule): string => {
   const parts = [];
@@ -88,8 +122,10 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
   schedule,
   onBack,
 }) => {
+  const [expandTeamDetails, setExpandTeamDetails] = useState(false);
   return (
-    <div className='bg-white rounded-lg shadow'>
+    <div className='bg-white rounded-lg shadow-lg'>
+      {/* Header */}
       <div className='flex items-center p-4 border-b'>
         <button onClick={onBack} className='mr-2'>
           <ArrowLeft size={20} />
@@ -97,12 +133,19 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
         <h2 className='text-xl font-bold'>Schedule Details</h2>
       </div>
 
+      {/* Main Content */}
       <div className='p-6 space-y-6'>
+        {/* Top Section */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <div className='space-y-4'>
             <div>
-              <h3 className='text-sm font-medium text-gray-500'>Team</h3>
-              <p className='text-lg font-semibold'>{schedule.teamName}</p>
+              <h3 className='text-sm font-medium text-gray-500 flex items-center'>
+                <User className='mr-2 text-gray-400' size={16} /> Team
+              </h3>
+              <div className='flex items-center justify-between'>
+                <p className='text-lg font-semibold'>{schedule.teamName}</p>
+                <StarRating rating={schedule.rating} />
+              </div>
             </div>
 
             <div>
@@ -122,7 +165,9 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
 
           <div className='space-y-4'>
             <div>
-              <h3 className='text-sm font-medium text-gray-500'>Location</h3>
+              <h3 className='text-sm font-medium text-gray-500 flex items-center'>
+                <MapPin className='mr-2 text-gray-400' size={16} /> Location
+              </h3>
               <p className='text-lg font-semibold'>
                 {formatLocation(schedule)}
               </p>
@@ -136,12 +181,25 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
                 }`}>
                 {schedule.status}
               </p>
+              {schedule.user && schedule.status === "Cancelled" && (
+                <div>
+                  <p className='text-lg font-semibold mt-2'>
+                    {schedule.user?.name}
+                  </p>
+                  <p className='text-sm cursor-pointer font-semibold underline text-blue-500'>
+                    View Booking
+                  </p>
+                </div>
+              )}
             </div>
 
             {schedule.bookedBy && (
               <div>
                 <h3 className='text-sm font-medium text-gray-500'>Booked By</h3>
-                <p className='text-lg font-semibold'>{schedule.bookedBy}</p>
+                <p className='text-lg font-semibold'>{schedule.user?.name}</p>
+                <p className='text-sm cursor-pointer font-semibold underline text-blue-500'>
+                  View Booking
+                </p>
               </div>
             )}
 
@@ -150,13 +208,61 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
                 <h3 className='text-sm font-medium text-gray-500'>
                   Blocked By
                 </h3>
-                <p className='text-lg font-semibold'>{schedule.blockedBy}</p>
+                <p className='text-lg font-semibold'>{schedule.user?.name}</p>
               </div>
             )}
           </div>
         </div>
 
+        {/* Team Members Section */}
         <div className='border-t pt-6'>
+          <div className='flex justify-between items-center mb-4'>
+            <h3 className='text-lg font-medium'>Team Members</h3>
+            <button
+              onClick={() => setExpandTeamDetails(!expandTeamDetails)}
+              className='text-blue-600 hover:text-blue-800'>
+              {expandTeamDetails ? "Collapse" : "Expand"} Details
+            </button>
+          </div>
+
+          {expandTeamDetails ? (
+            <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4'>
+              {schedule.members.map((member) => (
+                <div
+                  key={member.id}
+                  className='bg-gray-50 p-4 rounded-lg shadow-sm'>
+                  <div className='flex items-center mb-2'>
+                    <User className='mr-2 text-gray-500' size={20} />
+                    <h4 className='font-semibold'>{member.name}</h4>
+                  </div>
+                  <div className='flex items-center mb-2'>
+                    <Phone className='mr-2 text-gray-500' size={16} />
+                    <p className='text-sm text-gray-700'>{member.phone}</p>
+                  </div>
+                  <p className='text-xs text-gray-500'>{member.role}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className='flex space-x-2'>
+              {schedule.members.slice(0, 3).map((member) => (
+                <div
+                  key={member.id}
+                  className='bg-gray-100 rounded-full px-3 py-1 text-sm'>
+                  {member.name}
+                </div>
+              ))}
+              {schedule.members.length > 3 && (
+                <div className='bg-gray-100 rounded-full px-3 py-1 text-sm'>
+                  +{schedule.members.length - 3} more
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions Section */}
+        {/* <div className='border-t pt-6'>
           <h3 className='text-lg font-medium mb-4'>Actions</h3>
           <div className='flex flex-wrap gap-3'>
             <button className='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700'>
@@ -180,7 +286,7 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
               </button>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -296,6 +402,21 @@ interface TooltipProps {
   onViewDetails: (schedule: Schedule) => void;
 }
 
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "available":
+      return "bg-green-100 text-green-800";
+    case "booked":
+      return "bg-blue-100 text-blue-800";
+    case "transporting":
+      return "bg-yellow-100 text-yellow-800";
+    case "break":
+      return "bg-orange-100 text-orange-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
 const ScheduleTooltip: React.FC<TooltipProps> = ({
   schedules,
   position,
@@ -308,57 +429,134 @@ const ScheduleTooltip: React.FC<TooltipProps> = ({
 
   return (
     <div
-      className='absolute bg-white rounded-md shadow-lg p-4 z-50 w-64'
+      className='absolute bg-white rounded-xl shadow-2xl border border-gray-100 p-6 w-96 max-w-[90vw] animate-fade-in'
       style={{
         top: `${position.y}px`,
         left: `${position.x}px`,
-        maxWidth: "90vw",
       }}>
+      {/* Close Button */}
       <button
         onClick={onClose}
-        className='absolute top-2 right-2 text-gray-500 hover:text-gray-700'>
-        <X size={16} />
+        className='absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors'>
+        <X size={20} />
       </button>
 
       {!selectedTeam && schedules.length > 1 ? (
-        <>
-          <h3 className='font-semibold mb-2'>Select Team</h3>
-          <ul className='space-y-2'>
+        <div>
+          <h3 className='text-lg font-semibold text-gray-800 mb-4 flex items-center'>
+            <Users className='mr-2 text-gray-500' size={20} />
+            Select Team
+          </h3>
+          <div className='space-y-2'>
             {schedules.map((schedule) => (
-              <li
+              <div
                 key={schedule.id}
-                className='cursor-pointer hover:bg-gray-100 p-2 rounded'
-                onClick={() => setSelectedTeam(schedule)}>
-                {schedule.teamName} - {schedule.status}
-              </li>
+                onClick={() => setSelectedTeam(schedule)}
+                className='flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group'>
+                <div className='flex items-center space-x-3'>
+                  <Users
+                    className='text-gray-400 group-hover:text-blue-500 transition-colors'
+                    size={16}
+                  />
+                  <span className='font-medium text-gray-700 group-hover:text-blue-600'>
+                    {schedule.teamName}
+                  </span>
+                </div>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                    schedule.status
+                  )}`}>
+                  {schedule.status}
+                </span>
+              </div>
             ))}
-          </ul>
-        </>
-      ) : (
-        <>
-          <h3 className='font-semibold mb-2'>{selectedTeam?.teamName}</h3>
-          <div className='space-y-2 text-sm'>
-            <div>
-              <span className='font-medium'>Time:</span>{" "}
-              {selectedTeam?.startTime} - {selectedTeam?.endTime}
-            </div>
-            <div>
-              <span className='font-medium'>Location:</span>{" "}
-              {selectedTeam ? formatLocation(selectedTeam) : "Not specified"}
-            </div>
-            <div>
-              <span className='font-medium'>Status:</span>{" "}
-              {selectedTeam?.status}
-            </div>
-            <div className='pt-2'>
-              <button
-                className='bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs w-full'
-                onClick={() => selectedTeam && onViewDetails(selectedTeam)}>
-                View Details
-              </button>
-            </div>
           </div>
-        </>
+        </div>
+      ) : (
+        <div>
+          {/* Team Name and Status */}
+          <div className='flex justify-between items-center mb-6'>
+            <div className='flex items-center space-x-3'>
+              <Users className='text-gray-500' size={24} />
+              <h2 className='text-xl font-bold text-gray-800'>
+                {selectedTeam?.teamName}
+              </h2>
+            </div>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                selectedTeam?.status || ""
+              )}`}>
+              {selectedTeam?.status}
+            </span>
+          </div>
+
+          {/* Schedule Details */}
+          <div className='space-y-4'>
+            <div className='grid grid-cols-2 gap-4'>
+              {/* Time */}
+              <div className='flex flex-col space-x-3 bg-gray-50 p-3 rounded-lg'>
+                <div className='flex items-center gap-2'>
+                  <Clock className='text-gray-500' size={20} />
+                  <div className='text-xs text-gray-500'>Time</div>
+                </div>
+                <div>
+                  <div className='font-semibold mt-2 ml-2 text-sm text-gray-700'>
+                    {selectedTeam?.startTime} - {selectedTeam?.endTime}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div className='  bg-gray-50 p-3 rounded-lg'>
+                <div className='flex items-center gap-2'>
+                  <MapPin className='text-gray-500' size={20} />
+                  <div className='text-xs text-gray-500'>Location</div>
+                </div>
+
+                <div className='font-semibold mt-2 ml-2 text-xs text-gray-700'>
+                  {formatLocation(selectedTeam as Schedule) || "Not specified"}
+                </div>
+              </div>
+            </div>
+
+            {/* Team Members */}
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              <div className='flex justify-between items-center mb-3'>
+                <div className='flex items-center space-x-2'>
+                  <Users className='text-gray-500' size={16} />
+                  <span className='font-medium text-gray-700'>
+                    Team Members
+                  </span>
+                </div>
+                <span className='text-xs text-gray-500'>
+                  {selectedTeam?.members.length} members
+                </span>
+              </div>
+
+              <div className='flex -space-x-2'>
+                {selectedTeam?.members.map((member: any, index: number) => (
+                  <div key={member.id} className='relative' title={member.name}>
+                    <img
+                      src={
+                        member.avatar ||
+                        `https://api.dicebear.com/7.x/initials/svg?seed=${member.name}`
+                      }
+                      alt={member.name}
+                      className='w-10 h-10 rounded-full border-2 border-white object-cover'
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* View Details Button */}
+            <button
+              onClick={() => selectedTeam && onViewDetails(selectedTeam)}
+              className='w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center space-x-2'>
+              <span>View Details</span>
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -441,7 +639,8 @@ const ScheduleGroups: React.FC<{
               <div>
                 {schedule.startTime} - {schedule.endTime}
               </div>
-              <div className='text-xs truncate'>{schedule.property?.name}</div>
+              <div className='text-xs truncate'>{schedule.property?.name} </div>
+              <div className='text-xs truncate'>{schedule.district?.name}</div>
             </div>
           ))}
         </div>
@@ -525,6 +724,9 @@ const ScheduleCalendar: React.FC = () => {
       residence_type: item.residence_type || null,
       property: item.property || null,
       district: item.district || null,
+      members: item.members || [],
+      rating: item.rating || 0,
+      user: item.user || null,
     }));
   };
 

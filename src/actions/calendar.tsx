@@ -1,3 +1,4 @@
+"use server";
 import { getCalendar } from "@/lib/service/calendar";
 
 export default async function CalendarAction(

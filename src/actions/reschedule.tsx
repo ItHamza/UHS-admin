@@ -1,3 +1,4 @@
+"use server";
 import { createReschedule } from "@/lib/service/reschedule";
 
 export default async function ReschedulesAction(

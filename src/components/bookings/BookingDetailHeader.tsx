@@ -11,20 +11,17 @@ const BookingDetailHeader: React.FC<BookingDetailHeaderProps> = ({
   onClose,
 }) => {
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return "bg-blue-100 text-blue-800";
-      case "in-progress":
-        return "bg-yellow-100 text-yellow-800";
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+    const statusColors = {
+      pending: "bg-yellow-100 text-yellow-800",
+      cancelled: "bg-red-100 text-red-800",
+      completed: "bg-green-100 text-green-800",
+      in_progress: "bg-blue-100 text-blue-800",
+    };
+    return (
+      statusColors[status as keyof typeof statusColors] ||
+      "bg-gray-100 text-gray-800"
+    );
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -38,14 +35,15 @@ const BookingDetailHeader: React.FC<BookingDetailHeaderProps> = ({
     <div className='flex mt-15 md:mt-0 items-start justify-between px-4 py-6 sm:px-6 border-b border-gray-200'>
       <div>
         <div className='flex items-center'>
-          <h2 className='text-lg font-medium text-gray-900 mr-2'>
-            Booking {booking.id}
+          <h2 className='text-lg font-medium items-center flex text-gray-900 mr-2'>
+            {booking.booking_number}
           </h2>
           <span
             className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
               booking.status
             )}`}>
-            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+            {booking.status.charAt(0).toUpperCase() +
+              booking.status.replaceAll("_", " ").slice(1)}
           </span>
         </div>
         <p className='mt-1 text-sm text-gray-500'>
@@ -53,7 +51,7 @@ const BookingDetailHeader: React.FC<BookingDetailHeaderProps> = ({
         </p>
         {booking.createdAt !== booking.lastUpdated && (
           <p className='text-xs text-gray-500'>
-            Last updated: {new Date(booking.lastUpdated).toLocaleString()}
+            Last updated: {new Date(booking.updatedAt).toLocaleString()}
           </p>
         )}
       </div>

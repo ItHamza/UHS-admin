@@ -14,4 +14,5 @@ export interface Schedule {
   lastUpdated: string;
   duration: string;
   status: string;
+  [key: string]: any;
 }

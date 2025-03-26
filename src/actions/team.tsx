@@ -1,3 +1,4 @@
+"use server";
 import { getTeams } from "@/lib/service/teams";
 
 export default async function TeamsAction() {

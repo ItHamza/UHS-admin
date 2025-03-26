@@ -1,3 +1,4 @@
+"use server";
 import { getBookings } from "@/lib/service/booking";
 import { getRosters, RosterFilters } from "@/lib/service/roster";
 

@@ -1,3 +1,4 @@
+"use server";
 import { getAreas } from "@/lib/service/area";
 
 export default async function AreaAction() {

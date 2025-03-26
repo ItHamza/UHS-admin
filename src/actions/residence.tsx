@@ -1,3 +1,4 @@
+"use server";
 import { getResidences } from "@/lib/service/residence";
 
 export default async function ResidenceAction() {

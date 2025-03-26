@@ -13,6 +13,7 @@ import BlockBookingAction from "@/actions/block";
 import ConfirmBookingAction from "@/actions/confirmBooking";
 import CalendarAction from "@/actions/calendar";
 import CustomDatePicker from "../ui/custom-date-picker";
+import { UserCreateAction, UsersActions } from "@/actions/users";
 
 const durations = [1, 3, 6, 12];
 const residenceDurationMap: any = {
@@ -94,6 +95,14 @@ interface BookingDialogProps {
   onClose: () => void;
 }
 
+interface User {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  [key: string]: any;
+}
+
 const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,11 +127,14 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     specialInstructions: "",
   });
   const [calendar, setCalendar] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isCreatingNewUser, setIsCreatingNewUser] = useState(false);
 
   const [finalBookingData, setFinalBookingData] = useState<FinalBookingData>({
     userPhone: "",
     no_of_cleaners: 2,
-    userId: "ff46b07c-d708-4685-b63f-34ae9c27a535",
+    userId: "",
     timeslots: [],
     teamId: "",
     areaId: "",
@@ -152,14 +164,65 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   );
   const [bundles, setBundles] = useState<any[]>([]);
 
-  const totalSteps = 7;
+  const totalSteps = 6; // Reduced from 7 since we removed the user details step
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await UsersActions(); // Replace with your actual user fetch action
+      setUsers(response);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createNewUser = async () => {
+    try {
+      setIsLoading(true);
+      // Replace with your actual user creation action
+      const newUser = await UserCreateAction({
+        name: bookingData.userName,
+        phone: bookingData.phoneNumber,
+        email: bookingData.email,
+        is_active: true,
+        is_blocked: false,
+        role: "user",
+        area: bookingData.area,
+        property: bookingData.property,
+        district: bookingData.district,
+        residenceType: bookingData.residenceType,
+        districtId: bookingData.district,
+        propertyId: bookingData.property,
+        residenceTypeId: bookingData.residenceType,
+        apartment_number: bookingData.apartmentNumber,
+        lat: properties.filter((p) => p.id === bookingData.property)[0]
+          .latitude,
+        lng: properties.filter((p) => p.id === bookingData.property)[0]
+          .longitude,
+      });
+      setUsers([...users, newUser]);
+      setSelectedUserId(newUser.id);
+      setFinalBookingData((prev) => ({
+        ...prev,
+        userId: newUser.id,
+        userPhone: `%2b${bookingData.phoneNumber.replace(/\D/g, "")}`,
+      }));
+      setIsCreatingNewUser(false);
+    } catch (error) {
+      console.error("Error creating user:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchCalendar = async (startDate: string, endDate: string) => {
     try {
       setIsLoading(true);
       const response = await CalendarAction(startDate, endDate);
       const unavailableDates = Object.entries(response.data)
-        .filter(([_, isAvailable]) => !isAvailable) // Filter out unavailable dates
+        .filter(([_, isAvailable]) => !isAvailable)
         .map(([dateString]) => new Date(dateString));
 
       setCalendar(unavailableDates);
@@ -226,7 +289,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       const district = await DistrictAction(area);
       setDistricts(district);
 
-      // Update the finalBookingData
       setFinalBookingData((prev) => ({
         ...prev,
         areaId: area,
@@ -244,7 +306,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       const property = await PropertyAction(district);
       setProperties(property);
 
-      // Update the finalBookingData
       setFinalBookingData((prev) => ({
         ...prev,
         districtId: district,
@@ -313,7 +374,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         duration: duration,
       };
 
-      // Update finalBookingData
       const endDate = moment(formattedDate)
         .add(parseInt(bookingData.duration) || 1, "months")
         .format("YYYY-MM-DD");
@@ -335,7 +395,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         duration: payload.duration,
         serviceType: payload.serviceType,
       });
-      console.log("res", response);
+      console.log("payload", response);
       setBundles(response.data);
     } catch (error) {
       console.error("Error fetching bundles:", error);
@@ -353,10 +413,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     teamsData.forEach((team: any) => {
       team.availableBundles.forEach((bundle: any) => {
         if (bundle.bundleId === bundleId) {
-          // Set the teamId for the selected bundle
           setSelectedTeamId(team.teamId);
 
-          // Update finalBookingData with teamId
           setFinalBookingData((prev) => ({
             ...prev,
             teamId: team.teamId,
@@ -392,7 +450,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         bundles[0].teams,
         bundleId
       );
-      console.log("times", timeslotsRes);
       setTimeSlots(timeslotsRes);
     } catch (error) {
       console.error("Error fetching time slots:", error);
@@ -406,48 +463,35 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   };
   const [selectedDay, setSelectedDay] = useState<string[]>([]);
   const handleTimeSlotSelection = (slot: any, day: string, date: string) => {
-    // Create a new selections object
     let newSelections = { ...selectedSlots };
 
-    // Check if there's already a selection for this date
     const hasExistingSelection = newSelections[day] !== undefined;
     const isSameSlot = newSelections[day] === slot.id;
 
-    // Toggle logic - if clicking the same slot, deselect it
     if (isSameSlot) {
-      // Remove this date's selection entirely
       delete newSelections[day];
-
-      // Update selectedDay array (remove this day)
       setSelectedDay(selectedDay.filter((d) => d !== day));
     } else {
-      // Replace any existing selection for this date with the new slot
       newSelections[day] = slot.id;
-
-      // Update selectedDay array (ensure this day is included once)
       if (!selectedDay.includes(day)) {
         setSelectedDay([...selectedDay, day]);
       }
     }
 
-    // Update the selected slots state
     setSelectedSlots(newSelections);
 
-    // Update finalBookingData timeslots
     setFinalBookingData((prev) => {
-      // Create a new array without any slots for the current date
       const filteredTimeslots = prev.timeslots.filter((t) => {
         return !t.schedule_id.includes(date);
       });
 
-      // If we're adding a new selection (not toggling off)
       if (!isSameSlot) {
         const newTimeslot = {
           schedule_id: slot.id,
           start_time: slot.startTime,
           end_time: slot.endTime,
-          date: date, // Add date to make tracking easier
-          day: day, // Add day name for display
+          date: date,
+          day: day,
         };
 
         return {
@@ -456,22 +500,17 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         };
       }
 
-      // Otherwise just return the filtered list (removing the selection)
       return {
         ...prev,
         timeslots: filteredTimeslots,
       };
     });
 
-    // Update bookingData for display
-    // Create a more comprehensive display of selected time slots
     const selectedSlotsList = Object.entries(newSelections)
       .map(([dateStr, slotId]) => {
-        // Find the day info based on date
         const matchingDay = timeSlots.find((d) => d.day === dateStr);
         if (!matchingDay) return "";
 
-        // Find the slot info
         const matchingSlot = matchingDay.timeSlots.find((s) => s.id === slotId);
         if (!matchingSlot) return "";
 
@@ -488,9 +527,56 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
+      fetchUsers();
       fetchServices();
+      fetchArea();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      const selectedUser = users.filter((us) => us.id === selectedUserId)[0];
+      if (selectedUser.area) {
+        setBookingData((prev) => ({
+          ...prev,
+          area: selectedUser.area,
+        }));
+      }
+      if (selectedUser.area && selectedUser.districtId) {
+        setBookingData((prev) => ({
+          ...prev,
+          district: selectedUser.districtId,
+        }));
+      }
+      if (
+        selectedUser.area &&
+        selectedUser.districtId &&
+        selectedUser.propertyId
+      ) {
+        setBookingData((prev) => ({
+          ...prev,
+          property: selectedUser.propertyId,
+        }));
+      }
+      if (
+        selectedUser.area &&
+        selectedUser.districtId &&
+        selectedUser.propertyId &&
+        selectedUser.residenceTypeId
+      ) {
+        setBookingData((prev) => ({
+          ...prev,
+          residenceType: selectedUser.residenceTypeId,
+        }));
+      }
+      if (selectedUser.apartment_number) {
+        setBookingData((prev) => ({
+          ...prev,
+          apartmentNumber: selectedUser.apartment_number,
+        }));
+      }
+    }
+  }, [selectedUserId]);
 
   const blockSchedule = async () => {
     try {
@@ -509,16 +595,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                 const endTime = slotInfo.split("_")[1].split("-")[1];
 
                 const scheduleId = slotInfo.split("_")[0];
-                // Find matching timeslots in the bundle for this day/time combination
-                console.log(
-                  "basic info",
-                  scheduleId,
-                  startTime,
-                  endTime,
-                  av,
-                  day,
-                  selectedSlots
-                );
                 const matchingTimeSlots = av.days
                   .filter((d: any) => d.day === day)
                   ?.flatMap((d: any) => d.timeSlots)
@@ -527,13 +603,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       slot.startTime === startTime && slot.endTime === endTime
                   );
 
-                // Add to our collection of all matching timeslots
                 timeslotsSelected = [
                   ...timeslotsSelected,
                   ...matchingTimeSlots,
                 ];
 
-                // Return formatted data for each matching slot
                 return matchingTimeSlots.map((matchSlot: any) => ({
                   schedule_id: scheduleId,
                   start_time: startTime,
@@ -554,12 +628,10 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
               .format("YYYY-MM-DD")
           : moment(bookingData.startDate).add(1, "day").format("YYYY-MM-DD");
 
-      // Extract the start and end time from the first timeslot if frequency is "one_time"
-      const firstTimeslot = timeslotsSelected[0]; // Get the first timeslot
-      const startTime = firstTimeslot ? firstTimeslot.startTime : "00:00"; // Default to "00:00" if no timeslot
-      const endTime = firstTimeslot ? firstTimeslot.endTime : "00:00"; // Default to "00:00" if no timeslot
+      const firstTimeslot = timeslotsSelected[0];
+      const startTime = firstTimeslot ? firstTimeslot.startTime : "00:00";
+      const endTime = firstTimeslot ? firstTimeslot.endTime : "00:00";
 
-      // Append the times to the endDate if frequency is "one_time"
       const formattedEndDate =
         bookingData.frequency === "one_time"
           ? `${endDate}T${endTime}:00`
@@ -568,7 +640,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       const data: any = {
         userPhone: bookingData.phoneNumber,
         no_of_cleaners: 2,
-        userId: "ff46b07c-d708-4685-b63f-34ae9c27a535",
+        userId: selectedUserId,
         timeslots: timeslotsSelected,
         teamId: selectedTeamId,
         areaId: bookingData.area,
@@ -588,12 +660,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         appartmentNumber: bookingData.apartmentNumber,
         serviceId: bookingData.subService,
       };
+
       const bookingId = await BlockBookingAction(data);
-      console.log("booking id", bookingId);
       setBookingId("bookingId");
       setIsLoading(false);
       setShowSummary(true);
-      console.log("sched", data);
     } catch (error) {
       setIsLoading(false);
       console.log("error", error);
@@ -622,6 +693,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     }
   }, [bookingData.bundle]);
 
+  useEffect(() => {
+    if (bookingData.frequency && bookingData.duration) {
+      if (isFrequencyRecurring && bookingData.duration) {
+        const endDate = moment()
+          .add(parseInt(bookingData.duration), "months")
+          .format("YYYY-MM-DD");
+        fetchCalendar(moment().format("YYYY-MM-DD"), endDate);
+      }
+    }
+  }, [bookingData.frequency, bookingData.duration]);
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -640,7 +721,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
 
-    // Format phone number for finalBookingData
     if (name === "phoneNumber") {
       setFinalBookingData((prev) => ({
         ...prev,
@@ -651,10 +731,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
   const handleNext = async () => {
     if (currentStep < totalSteps) {
-      // Perform necessary API calls before moving to the next step
       setIsLoading(true);
+      fetchFrequencies();
 
-      if (currentStep === 3 && bookingData.startDate && bookingData.frequency) {
+      if (currentStep === 1 && isCreatingNewUser) {
+        await createNewUser();
+      } else if (
+        currentStep === 4 &&
+        bookingData.startDate &&
+        bookingData.frequency
+      ) {
         await fetchBundles();
       } else if (currentStep === 4 && bookingData.bundle) {
         await fetchTimeSlots(bookingData.bundle);
@@ -669,7 +755,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
+      if (currentStep === 2 && isCreatingNewUser) {
+        setIsCreatingNewUser(false);
+      } else {
+        setCurrentStep((prev) => prev - 1);
+      }
     }
   };
 
@@ -723,7 +813,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     setFinalBookingData({
       userPhone: "",
       no_of_cleaners: 2,
-      userId: "ff46b07c-d708-4685-b63f-34ae9c27a535",
+      userId: "",
       timeslots: [],
       teamId: "",
       areaId: "",
@@ -737,6 +827,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     setCurrentStep(1);
     setShowCancelModal(false);
     onClose();
+    setIsCreatingNewUser(false);
+    setSelectedUserId(null);
   };
 
   const isFrequencyRecurring =
@@ -747,32 +839,36 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
     switch (currentStep) {
       case 1:
-        return !bookingData.service || !bookingData.subService;
+        if (isCreatingNewUser) {
+          return (
+            !bookingData.userName ||
+            !bookingData.phoneNumber ||
+            !bookingData.email
+          );
+        }
+        return !selectedUserId;
       case 2:
+        return !bookingData.service || !bookingData.subService;
+      case 3:
         return (
           !bookingData.area ||
           !bookingData.district ||
           !bookingData.property ||
           !bookingData.residenceType
         );
-      case 3:
+      case 4:
         return (
           !bookingData.frequency ||
           (isFrequencyRecurring && !bookingData.duration) ||
           !bookingData.startDate
         );
-      case 4:
-        return !bookingData.bundle;
       case 5:
-        return finalBookingData.timeslots.length === 0;
+        return !bookingData.bundle;
       case 6:
         return (
-          !bookingData.userName ||
-          !bookingData.phoneNumber ||
-          !bookingData.email
+          finalBookingData.timeslots.length === 0 ||
+          !bookingData.apartmentNumber
         );
-      case 7:
-        return !bookingData.apartmentNumber;
       default:
         return false;
     }
@@ -780,7 +876,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  // CSS styles to remove focus outlines
   const noFocusStyle =
     "outline-none focus:outline-none focus:ring-0 focus:border-gray-300";
 
@@ -840,6 +935,24 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                 <div className='space-y-3 text-gray-700'>
                   <div className='bg-gray-50 p-3 rounded-lg'>
                     <h4 className='font-medium text-gray-900'>
+                      Customer Information
+                    </h4>
+                    <p>
+                      <span className='text-gray-500'>Name:</span>{" "}
+                      {bookingData.userName}
+                    </p>
+                    <p>
+                      <span className='text-gray-500'>Phone:</span>{" "}
+                      {bookingData.phoneNumber}
+                    </p>
+                    <p>
+                      <span className='text-gray-500'>Email:</span>{" "}
+                      {bookingData.email}
+                    </p>
+                  </div>
+
+                  <div className='bg-gray-50 p-3 rounded-lg'>
+                    <h4 className='font-medium text-gray-900'>
                       Service Details
                     </h4>
                     <p>
@@ -875,7 +988,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       {
                         residenceTypes.filter(
                           (a) => a.id === bookingData.residenceType
-                        )[0].name
+                        )[0].type
                       }
                     </p>
                   </div>
@@ -906,30 +1019,13 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       {bookingData.bundle.split("-")[1]}-
                       {bookingData.bundle.split("-")[2]}
                     </p>
-                    <p>
-                      <span className='text-gray-500'>Time Slot:</span>{" "}
-                      <span className=' font-semibold text-gray-600'>
-                        {bookingData.timeSlot}
-                      </span>
-                    </p>
+                    <p>{bookingData.timeSlot}</p>
                   </div>
 
                   <div className='bg-gray-50 p-3 rounded-lg'>
                     <h4 className='font-medium text-gray-900'>
-                      Customer Information
+                      Additional Details
                     </h4>
-                    <p>
-                      <span className='text-gray-500'>Name:</span>{" "}
-                      {bookingData.userName}
-                    </p>
-                    <p>
-                      <span className='text-gray-500'>Phone:</span>{" "}
-                      {bookingData.phoneNumber}
-                    </p>
-                    <p>
-                      <span className='text-gray-500'>Email:</span>{" "}
-                      {bookingData.email}
-                    </p>
                     <p>
                       <span className='text-gray-500'>Apartment:</span>{" "}
                       {bookingData.apartmentNumber}
@@ -963,8 +1059,253 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
               </div>
             ) : (
               <>
-                {/* Step 1: Select Service */}
+                {/* Step 1: Select or Create User */}
                 {currentStep === 1 && (
+                  <div className='space-y-5'>
+                    <h3 className='text-lg font-medium text-gray-900'>
+                      {isCreatingNewUser
+                        ? "Create New User"
+                        : "Select Customer"}
+                    </h3>
+
+                    {!isCreatingNewUser ? (
+                      <>
+                        <div className='space-y-3'>
+                          <label className='block font-medium text-gray-700'>
+                            Select Existing Customer
+                          </label>
+                          <select
+                            value={selectedUserId || ""}
+                            onChange={(e) => {
+                              const userId = e.target.value;
+                              setSelectedUserId(userId);
+                              if (userId) {
+                                const selectedUser = users.find(
+                                  (u) => u.id === userId
+                                );
+                                if (selectedUser) {
+                                  setBookingData((prev) => ({
+                                    ...prev,
+                                    userName: selectedUser.name,
+                                    phoneNumber: selectedUser.phone,
+                                    email: selectedUser.email,
+                                  }));
+                                  setFinalBookingData((prev) => ({
+                                    ...prev,
+                                    userId: selectedUser.id,
+                                    userPhone: `%2b${selectedUser.phone.replace(
+                                      /\D/g,
+                                      ""
+                                    )}`,
+                                  }));
+                                }
+                              }
+                            }}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            required>
+                            <option value=''>Select a customer</option>
+                            {users.map((user) => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} - {user.phone}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className='text-center'>
+                          <button
+                            onClick={() => setIsCreatingNewUser(true)}
+                            className='text-blue-600 hover:text-blue-800 font-medium'>
+                            + Create New Customer
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className='space-y-3'>
+                          <label className='block font-medium text-gray-700'>
+                            Full Name
+                          </label>
+                          <input
+                            type='text'
+                            name='userName'
+                            value={bookingData.userName}
+                            onChange={handleChange}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            placeholder='John Doe'
+                            required
+                          />
+                        </div>
+
+                        <div className='space-y-3'>
+                          <label className='block font-medium text-gray-700'>
+                            Phone Number
+                          </label>
+                          <input
+                            type='tel'
+                            name='phoneNumber'
+                            value={bookingData.phoneNumber}
+                            onChange={handleChange}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            placeholder='971501234567'
+                            required
+                          />
+                        </div>
+
+                        <div className='space-y-3'>
+                          <label className='block font-medium text-gray-700'>
+                            Email
+                          </label>
+                          <input
+                            type='email'
+                            name='email'
+                            value={bookingData.email}
+                            onChange={handleChange}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            placeholder='john@example.com'
+                            required
+                          />
+                        </div>
+                        <div className='space-y-5'>
+                          <h3 className='text-lg font-medium text-gray-900'>
+                            Location Details
+                          </h3>
+
+                          {/* Apartment Number */}
+                          <div className='space-y-3'>
+                            <label className='block font-medium text-gray-700'>
+                              Apartment Number
+                            </label>
+                            <input
+                              type='text'
+                              name='apartmentNumber'
+                              value={bookingData.apartmentNumber}
+                              onChange={handleChange}
+                              className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                              placeholder='e.g., 101, Villa 2A'
+                              required
+                            />
+                          </div>
+
+                          {/* Area Selection */}
+                          <div className='space-y-3'>
+                            <label className='block font-medium text-gray-700'>
+                              Select Area
+                            </label>
+                            <select
+                              name='area'
+                              value={bookingData.area}
+                              onChange={(e) => {
+                                handleChange(e);
+                                setBookingData((prev) => ({
+                                  ...prev,
+                                  district: "",
+                                  property: "",
+                                  residenceType: "",
+                                }));
+                                fetchDistrict(e.target.value);
+                              }}
+                              className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                              required>
+                              <option value=''>Select an area</option>
+                              {areas.map((area) => (
+                                <option key={area.id} value={area.id}>
+                                  {area.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* District Selection */}
+                          {bookingData.area && (
+                            <div className='space-y-3'>
+                              <label className='block font-medium text-gray-700'>
+                                Select District
+                              </label>
+                              <select
+                                name='district'
+                                value={bookingData.district}
+                                onChange={(e) => {
+                                  handleChange(e);
+                                  setBookingData((prev) => ({
+                                    ...prev,
+                                    property: "",
+                                    residenceType: "",
+                                  }));
+                                  fetchProperty(e.target.value);
+                                }}
+                                className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                                required>
+                                <option value=''>Select a district</option>
+                                {districts.map((district) => (
+                                  <option key={district.id} value={district.id}>
+                                    {district.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {/* Property Selection */}
+                          {bookingData.district && (
+                            <div className='space-y-3'>
+                              <label className='block font-medium text-gray-700'>
+                                Select Property
+                              </label>
+                              <select
+                                name='property'
+                                value={bookingData.property}
+                                onChange={(e) => {
+                                  handleChange(e);
+                                  setBookingData((prev) => ({
+                                    ...prev,
+                                    residenceType: "",
+                                  }));
+                                  fetchResidenceTypes();
+                                }}
+                                className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                                required>
+                                <option value=''>Select a property</option>
+                                {properties.map((property) => (
+                                  <option key={property.id} value={property.id}>
+                                    {property.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {/* Residence Type Selection */}
+                          {bookingData.property && (
+                            <div className='space-y-3'>
+                              <label className='block font-medium text-gray-700'>
+                                Select Residence Type
+                              </label>
+                              <select
+                                name='residenceType'
+                                value={bookingData.residenceType}
+                                onChange={handleChange}
+                                className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                                required>
+                                <option value=''>Select residence type</option>
+                                {residenceTypes.map((residence) => (
+                                  <option
+                                    key={residence.id}
+                                    value={residence.id}>
+                                    {residence.type}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 2: Select Service */}
+                {currentStep === 2 && (
                   <div className='space-y-5'>
                     <h3 className='text-lg font-medium text-gray-900'>
                       Service Selection
@@ -978,7 +1319,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                         value={bookingData.service}
                         onChange={(e) => {
                           handleChange(e);
-
                           setBookingData((prev) => ({
                             ...prev,
                             subService: "",
@@ -1022,12 +1362,30 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Step 2: Location */}
-                {currentStep === 2 && (
+                {/* Step 3: Location */}
+                {currentStep === 3 && (
                   <div className='space-y-5'>
                     <h3 className='text-lg font-medium text-gray-900'>
                       Location Details
                     </h3>
+
+                    {/* Apartment Number */}
+                    <div className='space-y-3'>
+                      <label className='block font-medium text-gray-700'>
+                        Apartment Number
+                      </label>
+                      <input
+                        type='text'
+                        name='apartmentNumber'
+                        value={bookingData.apartmentNumber}
+                        onChange={handleChange}
+                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                        placeholder='e.g., 101, Villa 2A'
+                        required
+                      />
+                    </div>
+
+                    {/* Area Selection */}
                     <div className='space-y-3'>
                       <label className='block font-medium text-gray-700'>
                         Select Area
@@ -1037,7 +1395,12 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                         value={bookingData.area}
                         onChange={(e) => {
                           handleChange(e);
-                          setBookingData((prev) => ({ ...prev, district: "" }));
+                          setBookingData((prev) => ({
+                            ...prev,
+                            district: "",
+                            property: "",
+                            residenceType: "",
+                          }));
                           fetchDistrict(e.target.value);
                         }}
                         className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
@@ -1051,6 +1414,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       </select>
                     </div>
 
+                    {/* District Selection */}
                     {bookingData.area && (
                       <div className='space-y-3'>
                         <label className='block font-medium text-gray-700'>
@@ -1061,12 +1425,17 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                           value={bookingData.district}
                           onChange={(e) => {
                             handleChange(e);
+                            setBookingData((prev) => ({
+                              ...prev,
+                              property: "",
+                              residenceType: "",
+                            }));
                             fetchProperty(e.target.value);
                           }}
                           className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
                           required>
                           <option value=''>Select a district</option>
-                          {districts?.map((district) => (
+                          {districts.map((district) => (
                             <option key={district.id} value={district.id}>
                               {district.name}
                             </option>
@@ -1075,80 +1444,104 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       </div>
                     )}
 
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Property Type
-                      </label>
-                      <select
-                        name='property'
-                        value={bookingData.property}
-                        onChange={(e) => {
-                          handleChange(e);
-                          fetchResidenceTypes();
-                        }}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle} ${
-                          !bookingData.district
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                        disabled={!bookingData.district}
-                        required>
-                        <option value=''>Select property</option>
-                        {properties?.map((property) => (
-                          <option key={property.id} value={property.id}>
-                            {property.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Property Selection */}
+                    {bookingData.district && (
+                      <div className='space-y-3'>
+                        <label className='block font-medium text-gray-700'>
+                          Select Property
+                        </label>
+                        <select
+                          name='property'
+                          value={bookingData.property}
+                          onChange={(e) => {
+                            handleChange(e);
+                            setBookingData((prev) => ({
+                              ...prev,
+                              residenceType: "",
+                            }));
+                            fetchResidenceTypes();
+                          }}
+                          className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                          required>
+                          <option value=''>Select a property</option>
+                          {properties.map((property) => (
+                            <option key={property.id} value={property.id}>
+                              {property.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Residence Type
+                    {/* Residence Type Selection */}
+                    {bookingData.property && (
+                      <div className='space-y-3'>
+                        <label className='block font-medium text-gray-700'>
+                          Select Residence Type
+                        </label>
+                        <select
+                          name='residenceType'
+                          value={bookingData.residenceType}
+                          onChange={handleChange}
+                          className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                          required>
+                          <option value=''>Select residence type</option>
+                          {residenceTypes.map((residence) => (
+                            <option key={residence.id} value={residence.id}>
+                              {residence.type}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {/* User Presence */}
+                    <div className='space-y-3 pt-2'>
+                      <label className='flex items-center'>
+                        <input
+                          type='checkbox'
+                          name='userPresent'
+                          checked={bookingData.userPresent}
+                          onChange={handleChange}
+                          className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2'
+                        />
+                        <span className='text-gray-700'>
+                          Will the user be present during service?
+                        </span>
                       </label>
-                      <select
-                        name='residenceType'
-                        value={bookingData.residenceType}
-                        onChange={(e) => {
-                          handleChange(e);
-                          fetchFrequencies();
-                        }}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle} ${
-                          !bookingData.property
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
-                        disabled={!bookingData.property}
-                        required>
-                        <option value=''>Select residence type</option>
-                        {residenceTypes?.map((residence) => (
-                          <option key={residence.id} value={residence.id}>
-                            {residence.type}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 )}
 
-                {/* Step 3: Schedule */}
-                {currentStep === 3 && (
+                {/* Step 4: Schedule */}
+                {currentStep === 4 && (
                   <div className='space-y-5'>
                     <h3 className='text-lg font-medium text-gray-900'>
                       Schedule Details
                     </h3>
+
+                    {/* Frequency Selection */}
                     <div className='space-y-3'>
                       <label className='block font-medium text-gray-700'>
-                        Frequency
+                        Select Frequency
                       </label>
                       <select
                         name='frequency'
                         value={bookingData.frequency}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          handleChange(e);
+
+                          setBookingData((prev) => ({
+                            ...prev,
+                            duration:
+                              e.target.value === "one_time"
+                                ? "1"
+                                : prev.duration,
+                          }));
+                        }}
                         className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
                         required>
                         <option value=''>Select frequency</option>
-                        {frequencies?.map((frequency) => (
+                        {frequencies.map((frequency) => (
                           <option key={frequency.id} value={frequency.id}>
                             {frequency.label}
                           </option>
@@ -1156,28 +1549,21 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       </select>
                     </div>
 
+                    {/* Duration Selection (only for recurring services) */}
                     {isFrequencyRecurring && (
                       <div className='space-y-3'>
                         <label className='block font-medium text-gray-700'>
-                          Contract Duration
+                          Select Duration (months)
                         </label>
                         <select
                           name='duration'
                           value={bookingData.duration}
-                          onChange={(e) => {
-                            fetchCalendar(
-                              moment().format("YYYY-MM-DD"),
-                              moment()
-                                .add(parseInt(e.target.value), "months")
-                                .format("YYYY-MM-DD")
-                            );
-                            handleChange(e);
-                          }}
+                          onChange={handleChange}
                           className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
                           required>
                           <option value=''>Select duration</option>
                           {durations.map((duration) => (
-                            <option key={duration} value={duration}>
+                            <option key={duration} value={duration.toString()}>
                               {duration} {duration === 1 ? "month" : "months"}
                             </option>
                           ))}
@@ -1185,56 +1571,51 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                       </div>
                     )}
 
+                    {/* Start Date Selection */}
                     <div className='space-y-3'>
                       <label className='block font-medium text-gray-700'>
-                        Start Date
+                        Select Start Date
                       </label>
-                      {!isLoading ? (
+                      {bookingData.duration && !isLoading ? (
                         <CustomDatePicker
-                          startDate={new Date()}
-                          setStartDate={(d) => {
-                            setBookingData((prev) => ({
-                              ...prev,
-                              startDate: moment(d).format("YYYY-MM-DD"),
-                            }));
-                          }}
-                          minDate={new Date()}
+                          startDate={moment().toDate()}
                           maxDate={moment(new Date())
                             .add(parseInt(bookingData.duration) || 1, "months")
                             .toDate()}
+                          setStartDate={(date: any) => {
+                            setBookingData((prev) => ({
+                              ...prev,
+                              startDate: moment(date).format("YYYY-MM-DD"),
+                            }));
+                          }}
                           unavailableDates={calendar}
+                          minDate={moment().toDate()}
                         />
+                      ) : !bookingData.frequency ? (
+                        <p>Select a frequency first</p>
                       ) : (
-                        <div>Loading calendar...</div>
+                        <div className='w-6 h-6 border-6 border-blue-500 border-t-transparent rounded-full animate-spin'></div>
                       )}
-                      {/* <input
-                        type='date'
-                        name='startDate'
-                        value={bookingData.startDate}
-                        onChange={handleChange}
-                        min={new Date().toISOString().split("T")[0]}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                        required
-                      /> */}
                     </div>
                   </div>
                 )}
 
-                {/* Step 4: Bundle Selection */}
-                {currentStep === 4 && (
+                {/* Step 5: Bundle Selection */}
+                {currentStep === 5 && (
                   <div className='space-y-5'>
                     <h3 className='text-lg font-medium text-gray-900'>
-                      Bundle Selection
+                      Select a Cleaning Package
                     </h3>
-                    <div className='space-y-4'>
-                      {bundles && bundles.length > 0 ? (
-                        bundles[0].bundles.map((bundle: any) => (
+
+                    {bundles.length > 0 ? (
+                      <div className='grid grid-cols-1 gap-3'>
+                        {bundles[0].bundles.map((bundle: any) => (
                           <div
                             key={bundle.id}
-                            className={`border p-4 rounded-lg cursor-pointer transition-all ${
+                            className={`p-4 border rounded-lg cursor-pointer transition ${
                               bookingData.bundle === bundle.id
-                                ? "border-blue-500 bg-blue-50 shadow"
-                                : "border-gray-200 hover:border-blue-300"
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-300 hover:border-blue-300"
                             }`}
                             onClick={() => {
                               setBookingData((prev) => ({
@@ -1244,170 +1625,82 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                             }}>
                             <div className='flex justify-between items-center'>
                               <div>
-                                <h4 className='font-semibold text-gray-900'>
+                                <h4 className='font-medium text-gray-900'>
                                   {bundle.title}
                                 </h4>
-                                {/* <p className='text-gray-600 text-sm'>
-                                  {bundle.description}
+                                {/* <p className='text-gray-600'>
+                                  {bundle.duration} mins
                                 </p> */}
                               </div>
-                              {/* <div className='text-right'>
-                                <p className='text-blue-600 font-bold'>
-                                  {bundle.price} AED
-                                </p>
-                                <p className='text-gray-500 text-xs'>
-                                  Per Session
-                                </p>
-                              </div> */}
+                              {bookingData.bundle === bundle.id && (
+                                <div className='w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white'>
+                                  ✓
+                                </div>
+                              )}
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className='text-center p-6 bg-gray-50 rounded-lg'>
-                          <p className='text-gray-500'>
-                            No bundles available for the selected criteria
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 5: Time Slot Selection */}
-                {currentStep === 5 && (
-                  <div className='space-y-4'>
-                    {timeSlots.slice(0, getSliceEndIndex()).map((day) => (
-                      <div
-                        key={day.date}
-                        className='border rounded-lg overflow-hidden'>
-                        <div className='bg-gray-50 p-3 border-b'>
-                          <h4 className='font-medium'>
-                            {day.day} ({day.date})
-                          </h4>
-                        </div>
-                        <div className='p-3 grid grid-cols-2 gap-2'>
-                          {day.timeSlots.map((slot) => {
-                            // Create a unique day identifier
-                            const dayId = day.day; // Using date as the day identifier
-
-                            // Check if this slot is selected for this day
-                            const isSelected = selectedSlots[dayId] === slot.id;
-
-                            return (
-                              <div
-                                key={slot.id}
-                                className={`px-3 py-2 border rounded text-center cursor-pointer text-sm
-                               ${
-                                 isSelected
-                                   ? "bg-blue-500 text-white border-blue-500"
-                                   : "hover:border-blue-300"
-                               }`}
-                                onClick={() =>
-                                  handleTimeSlotSelection(
-                                    slot,
-                                    day.day,
-                                    day.date
-                                  )
-                                }>
-                                {slot.startTime} - {slot.endTime}
-                              </div>
-                            );
-                          })}
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <div className='text-center py-4 text-gray-500'>
+                        {isLoading
+                          ? "Loading bundles..."
+                          : "No bundles available for the selected criteria"}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Step 6: Contact Information */}
+                {/* Step 6: Time Slot Selection */}
                 {currentStep === 6 && (
                   <div className='space-y-5'>
                     <h3 className='text-lg font-medium text-gray-900'>
-                      Contact Information
+                      Select Time Slots
                     </h3>
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Full Name
-                      </label>
-                      <input
-                        type='text'
-                        name='userName'
-                        value={bookingData.userName}
-                        onChange={handleChange}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                        placeholder='John Doe'
-                        required
-                      />
-                    </div>
 
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Phone Number
-                      </label>
-                      <input
-                        type='tel'
-                        name='phoneNumber'
-                        value={bookingData.phoneNumber}
-                        onChange={handleChange}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                        placeholder='971501234567'
-                        required
-                      />
-                    </div>
+                    {timeSlots.length > 0 ? (
+                      <div className='space-y-4'>
+                        {timeSlots.slice(0, getSliceEndIndex()).map((day) => (
+                          <div
+                            key={`${day.day}-${day.date}`}
+                            className='border rounded-lg p-3'>
+                            <h4 className='font-medium text-gray-900 mb-2'>
+                              {day.day}
+                            </h4>
+                            <div className='grid grid-cols-2 gap-2'>
+                              {day.timeSlots.map((slot) => (
+                                <button
+                                  key={slot.id}
+                                  type='button'
+                                  onClick={() =>
+                                    handleTimeSlotSelection(
+                                      slot,
+                                      day.day,
+                                      day.date
+                                    )
+                                  }
+                                  className={`py-2 px-3 rounded-md text-sm font-medium transition ${
+                                    selectedSlots[day.day] === slot.id
+                                      ? "bg-blue-500 text-white"
+                                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                  }`}>
+                                  {slot.startTime} - {slot.endTime}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className='text-center py-4 text-gray-500'>
+                        {isLoading
+                          ? "Loading time slots..."
+                          : "No time slots available for the selected bundle"}
+                      </div>
+                    )}
 
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Email
-                      </label>
-                      <input
-                        type='email'
-                        name='email'
-                        value={bookingData.email}
-                        onChange={handleChange}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                        placeholder='john@example.com'
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 7: Additional Details */}
-                {currentStep === 7 && (
-                  <div className='space-y-5'>
-                    <h3 className='text-lg font-medium text-gray-900'>
-                      Additional Details
-                    </h3>
-                    <div className='space-y-3'>
-                      <label className='block font-medium text-gray-700'>
-                        Apartment/Villa Number
-                      </label>
-                      <input
-                        type='text'
-                        name='apartmentNumber'
-                        value={bookingData.apartmentNumber}
-                        onChange={handleChange}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                        placeholder='Apt 501'
-                        required
-                      />
-                    </div>
-
-                    <div className='flex items-center space-x-3 py-2'>
-                      <input
-                        type='checkbox'
-                        id='userPresent'
-                        name='userPresent'
-                        checked={bookingData.userPresent}
-                        onChange={handleChange}
-                        className='h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500'
-                      />
-                      <label htmlFor='userPresent' className='text-gray-700'>
-                        I will be present during service
-                      </label>
-                    </div>
-
-                    <div className='space-y-3'>
+                    {/* Special Instructions */}
+                    <div className='space-y-3 pt-2'>
                       <label className='block font-medium text-gray-700'>
                         Special Instructions (Optional)
                       </label>
@@ -1415,9 +1708,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                         name='specialInstructions'
                         value={bookingData.specialInstructions}
                         onChange={handleChange}
-                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
                         rows={3}
-                        placeholder='Any special instructions for the service provider...'
+                        className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                        placeholder='Any special instructions for the cleaning team...'
                       />
                     </div>
                   </div>

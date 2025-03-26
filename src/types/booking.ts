@@ -4,15 +4,16 @@ export interface Booking {
   customer: string;
   customerType: "residential" | "commercial";
   frequency: string;
-  status: "scheduled" | "in-progress" | "completed" | "cancelled";
+  status: "pending" | "in_progress" | "cancelled" | "completed";
   date: string;
   timeSlot: string;
   duration: number;
   address: string;
-  team: string;
+  team: any;
   price: number;
   notes: string;
   specialRequests: string;
   createdAt: string;
   lastUpdated: string;
+  [key: string]: any;
 }
