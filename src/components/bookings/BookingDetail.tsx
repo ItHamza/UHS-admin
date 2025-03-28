@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import BookingDetailHeader from "./BookingDetailHeader";
 import { Booking } from "@/types/booking";
 import {
@@ -7,6 +7,10 @@ import {
   MapPinIcon,
   UsersIcon,
 } from "lucide-react";
+import { formatTime } from "@/utils/format-time";
+import RescheduleModal from "./RescheduleDialog";
+import RenewModal from "./RenewDialog";
+import CancelModal from "./CancelModal";
 
 interface BookingDetailProps {
   booking: Booking;
@@ -14,6 +18,10 @@ interface BookingDetailProps {
 }
 
 const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
+  const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -87,7 +95,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
               <div className='grid grid-cols-2 gap-4 mb-4'>
                 <div>
                   <p className='text-sm text-gray-500'>Service Type</p>
-                  <p className='font-medium'>{booking.frequency}</p>
+                  <p className='font-medium'>{booking.service.name}</p>
                 </div>
               </div>
               <div className='grid grid-cols-2 gap-4'>
@@ -157,6 +165,41 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             </div>
           </div>
 
+          <div className='mb-6'>
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>
+              Service Schedule
+            </h3>
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              {booking.services.length > 0 ? (
+                <div className='divide-y divide-gray-200'>
+                  {booking.services.map((service: any, index: number) => (
+                    <div key={index} className='py-3 grid grid-cols-3 gap-4'>
+                      <div>
+                        <p className='text-sm text-gray-500'>Date</p>
+                        <p className='font-medium'>
+                          {formatDate(service.date)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className='text-sm text-gray-500'>Start Time</p>
+                        <p className='font-medium'>
+                          {formatTime(service.start_time)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className='text-sm text-gray-500'>End Time</p>
+                        <p className='font-medium'>
+                          {formatTime(service.end_time)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className='text-gray-500'>No service dates scheduled.</p>
+              )}
+            </div>
+          </div>
           <div className='mt-6 flex gap-4 '>
             {booking.status === "pending" && (
               <>
@@ -170,10 +213,14 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             )}
             {booking.status === "in_progress" && (
               <>
-                <button className='flex-1 h-10  bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'>
+                <button
+                  onClick={() => setIsRenewModalOpen(true)}
+                  className='flex-1 h-10 bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'>
                   Renew
                 </button>
-                <button className='flex-1 h-10  bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'>
+                <button
+                  onClick={() => setIsRescheduleModalOpen(true)}
+                  className='flex-1 h-10 bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'>
                   Reschedule
                 </button>
               </>
@@ -185,13 +232,33 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             )} */}
             {booking.status !== "cancelled" &&
               booking.status !== "completed" && (
-                <button className='flex-1 h-10  bg-red-50 py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'>
+                <button
+                  onClick={() => setIsCancelModalOpen(true)}
+                  className='flex-1 h-10 bg-red-50 py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'>
                   Cancel
                 </button>
               )}
           </div>
         </div>
       </div>
+      <RenewModal
+        isOpen={isRenewModalOpen}
+        onClose={() => setIsRenewModalOpen(false)}
+        bookingData={booking}
+        onRenew={() => {
+          window.location.reload();
+        }}
+      />
+      <RescheduleModal
+        isOpen={isRescheduleModalOpen}
+        onClose={() => setIsRescheduleModalOpen(false)}
+        booking={booking}
+      />
+      <CancelModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        booking={booking}
+      />
     </>
   );
 };

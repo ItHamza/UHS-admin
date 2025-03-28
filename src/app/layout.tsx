@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppLayout from "@/components/layouts/AppLayout";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "Urban Hospitality Services",
@@ -22,6 +23,7 @@ export default function RootLayout({
       </head>
       <body>
         <AppLayout>{children}</AppLayout>
+        <Toaster position='bottom-center' />
       </body>
     </html>
   );

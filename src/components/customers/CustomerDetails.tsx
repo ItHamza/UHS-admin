@@ -14,6 +14,8 @@ interface Customer {
   notes: string;
   status: "Active" | "Inactive";
   joinDate: string;
+  residence_type: any;
+  [key: string]: any;
 }
 
 interface CustomerDetailProps {
@@ -28,7 +30,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer }) => {
       day: "numeric",
     });
   };
-
+  console.log("customer", customer);
   return (
     <div className='mt-6'>
       <div className='border-b border-gray-200 pb-6'>
@@ -43,8 +45,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer }) => {
               {customer.name}
             </h3>
             <p className='text-sm text-gray-500'>
-              {customer.type === "commercial" ? "Commercial" : "Residential"}{" "}
-              Customer
+              {customer.residence_type.type} Customer
             </p>
           </div>
         </div>
@@ -134,12 +135,12 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer }) => {
             <p className='text-sm text-gray-500'>Total Bookings</p>
             <p className='text-lg font-medium'>{customer.totalBookings}</p>
           </div>
-          <div className='bg-gray-50 p-3 rounded'>
+          {/* <div className='bg-gray-50 p-3 rounded'>
             <p className='text-sm text-gray-500'>Total Spent</p>
             <p className='text-lg font-medium'>
               ${customer.totalSpent.toLocaleString()}
             </p>
-          </div>
+          </div> */}
         </div>
         <div className='mb-4'>
           <p className='text-sm text-gray-500'>Last Booking</p>

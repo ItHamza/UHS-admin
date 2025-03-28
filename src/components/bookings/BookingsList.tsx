@@ -130,60 +130,61 @@ const BookingsList: React.FC = () => {
                 </tr>
               </thead>
               <tbody className='bg-white divide-y divide-gray-200'>
-                {filteredBookings.map((booking, idx) => (
-                  <tr key={idx} className='hover:bg-gray-50'>
-                    <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
-                      {booking.booking_number}
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='flex items-center'>
-                        <div>
-                          <div className='text-sm font-medium text-gray-900'>
-                            {booking.customer}
+                {filteredBookings.length > 0 &&
+                  filteredBookings.map((booking, idx) => (
+                    <tr key={idx} className='hover:bg-gray-50'>
+                      <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
+                        {booking.booking_number}
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='flex items-center'>
+                          <div>
+                            <div className='text-sm font-medium text-gray-900'>
+                              {booking.customer}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm text-gray-900'>
-                        {booking.frequency.charAt(0).toUpperCase() +
-                          booking.frequency.slice(1)}
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm text-gray-900'>
-                        {moment(booking.date).format("DD MMM YYYY")} -{" "}
-                        {moment(booking.end_date).format("DD MMM YYYY")}
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                          booking.status
-                        )}`}>
-                        {booking.status.charAt(0).toUpperCase() +
-                          booking.status.replaceAll("_", " ").slice(1)}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm text-gray-900'>
-                        {booking.team.name}
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='text-sm text-gray-900'>
-                        {moment(booking.createdAt).format("DD MMM YYYY")}
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                      <button
-                        onClick={() => handleViewBooking(booking)}
-                        className='text-indigo-600 hover:text-indigo-900'>
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='text-sm text-gray-900'>
+                          {booking.frequency.charAt(0).toUpperCase() +
+                            booking.frequency.slice(1)}
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='text-sm text-gray-900'>
+                          {moment(booking.date).format("DD MMM YYYY")} -{" "}
+                          {moment(booking.end_date).format("DD MMM YYYY")}
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                            booking.status
+                          )}`}>
+                          {booking.status.charAt(0).toUpperCase() +
+                            booking.status.replaceAll("_", " ").slice(1)}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='text-sm text-gray-900'>
+                          {booking.team.name}
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap'>
+                        <div className='text-sm text-gray-900'>
+                          {moment(booking.createdAt).format("DD MMM YYYY")}
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
+                        <button
+                          onClick={() => handleViewBooking(booking)}
+                          className='text-indigo-600 hover:text-indigo-900'>
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

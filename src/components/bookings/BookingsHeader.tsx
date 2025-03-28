@@ -16,7 +16,7 @@ import CustomDatePicker from "../ui/custom-date-picker";
 import { UserCreateAction, UsersActions } from "@/actions/users";
 
 const durations = [1, 3, 6, 12];
-const residenceDurationMap: any = {
+export const residenceDurationMap: any = {
   Studio: 45,
   "1BHK Apartment": 60,
   "1BHK + Study Room": 90,
@@ -31,7 +31,7 @@ const residenceDurationMap: any = {
   "5BHK Villa": 300,
 };
 
-const frequencyNumberMapping: Record<string, number> = {
+export const frequencyNumberMapping: Record<string, number> = {
   one_time: 1,
   once: 1,
   twice: 2,
@@ -80,7 +80,7 @@ interface FinalBookingData {
   frequency: string;
 }
 
-interface TimeSlot {
+export interface TimeSlot {
   day: string;
   date: string;
   timeSlots: {
@@ -1016,8 +1016,10 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                     </p>
                     <p>
                       <span className='text-gray-500'>Bundle:</span>{" "}
-                      {bookingData.bundle.split("-")[1]}-
-                      {bookingData.bundle.split("-")[2]}
+                      {bookingData.bundle
+                        .split("bundle-")[1]
+                        .split("-gap")[0]
+                        .replaceAll("-", ", ")}
                     </p>
                     <p>{bookingData.timeSlot}</p>
                   </div>

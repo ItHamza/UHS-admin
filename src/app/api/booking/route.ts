@@ -13,6 +13,30 @@ async function fetchBookings() {
   return data.data || [];
 }
 
+async function getServices(ids: any[]) {
+  if (!ids || ids.length === 0) return []; // Ensure no empty calls
+  try {
+    const response = await fetch(`${BASE_URL}/team-availability/all-by-ids`, {
+      method: "POST",
+      body: JSON.stringify({ ids, disableCurrentDate: true }),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching services:", error);
+    return [];
+  }
+}
+
 function calculateDuration(
   startDate: moment.Moment,
   endDate: moment.Moment
@@ -34,26 +58,34 @@ export async function GET() {
   try {
     const bookings = await fetchBookings();
 
-    const transformedBookings = bookings.map((booking: any) => {
-      const startDate = moment(booking.date);
-      const endDate = moment(booking.end_date);
-      const duration = calculateDuration(startDate, endDate);
+    const transformedBookings = await Promise.all(
+      bookings.map(async (booking: any) => {
+        const startDate = moment(booking.date);
+        const endDate = moment(booking.end_date);
+        const duration = calculateDuration(startDate, endDate);
 
-      return {
-        id: booking.booking_number,
-        customer: booking.user.name,
-        frequency: booking.recurrence_plan,
-        date: `${moment(booking.date).format("DD, MMM YY")} - ${moment(
-          booking.end_date
-        ).format("DD, MMM YY")}`,
-        status: booking.status.replace("_", " "),
-        customer_id: booking.user.user_number,
-        duration: duration,
-        paymentStatus: booking.payment_status,
-        instructions: booking.special_instructions,
-        ...booking,
-      };
-    });
+        // Fetch services, but ensure it doesn't block the main booking info
+        const services = await getServices(booking.team_availability_ids).catch(
+          () => []
+        );
+
+        return {
+          id: booking.booking_number,
+          customer: booking.user?.name || "Unknown",
+          frequency: booking.recurrence_plan,
+          date: `${moment(booking.date).format("DD, MMM YY")} - ${moment(
+            booking.end_date
+          ).format("DD, MMM YY")}`,
+          status: booking.status.replace("_", " "),
+          customer_id: booking.user?.user_number || "N/A",
+          duration: duration,
+          paymentStatus: booking.payment_status,
+          instructions: booking.special_instructions,
+          services, // Services are now correctly handled
+          ...booking,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,

@@ -1,8 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import AddCustomerModal from "../bookings/CreateCustomerDialog";
+import AreaAction from "@/actions/area";
+import toast from "react-hot-toast";
 
 const CustomersHeader: React.FC = () => {
+  const [showCreateUser, setShowCreateUser] = useState<boolean>(false);
+  const [areas, setAreas] = useState<any[]>([]);
+
+  const fetchArea = async () => {
+    try {
+      const area = await AreaAction();
+      setAreas(area);
+    } catch (error: any) {
+      console.log("error", error);
+      toast.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchArea();
+  }, []);
+
   return (
     <div className='flex flex-col md:flex-row md:items-center md:justify-between'>
       <div>
@@ -28,7 +48,11 @@ const CustomersHeader: React.FC = () => {
           </svg>
           Export
         </button>
-        <button className='bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded text-sm flex items-center'>
+        <button
+          onClick={() => {
+            setShowCreateUser(true);
+          }}
+          className='bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded text-sm flex items-center'>
           <svg
             className='w-4 h-4 mr-2'
             fill='none'
@@ -45,6 +69,15 @@ const CustomersHeader: React.FC = () => {
           Add Customer
         </button>
       </div>
+      {showCreateUser && (
+        <AddCustomerModal
+          isOpen={showCreateUser}
+          onClose={() => {
+            setShowCreateUser(!showCreateUser);
+          }}
+          areas={areas}
+        />
+      )}
     </div>
   );
 };

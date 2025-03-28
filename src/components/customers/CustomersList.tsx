@@ -226,7 +226,7 @@ const CustomersList: React.FC = () => {
                 <th
                   scope='col'
                   className='px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider'>
-                  Actions
+                  {/* Actions */}
                 </th>
               </tr>
             </thead>
@@ -296,11 +296,12 @@ const CustomersList: React.FC = () => {
                       {customer.status === "Active" ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>
-                    <button
-                      onClick={() => handleViewCustomer(customer)}
-                      className='text-indigo-600 hover:text-indigo-900'>
-                      View Details
+                  <td className='px-6 gap-2 flex items-center py-4 whitespace-nowrap text-right text-sm font-medium'>
+                    <button className='text-indigo-600 cursor-pointer hover:text-indigo-900'>
+                      Edit
+                    </button>
+                    <button className='text-red-600 cursor-pointer hover:text-red-900'>
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -393,7 +394,7 @@ const CustomersList: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                    <CustomerDetail customer={selectedCustomer} />
+                    {/* <CustomerDetail customer={selectedCustomer} /> */}
                   </div>
                 </div>
               </div>

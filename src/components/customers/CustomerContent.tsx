@@ -10,10 +10,10 @@ export default function CustomersPage() {
     <div className='space-y-6 p-4 lg:p-6'>
       <CustomersHeader />
       <div className='grid grid-cols-1 lg:grid-cols-4 gap-6'>
-        <div className='lg:col-span-1'>
+        {/* <div className='lg:col-span-1'>
           <CustomerFilters />
-        </div>
-        <div className='lg:col-span-3'>
+        </div> */}
+        <div className='lg:col-span-4'>
           <CustomersList />
         </div>
       </div>
