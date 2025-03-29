@@ -30,7 +30,7 @@ export default function RosterHeader({
             <RiCalendarFill className='h-4 w-4 mr-2' />
             Calendar
           </button>
-          <button
+          {/* <button
             onClick={() => onViewChange("list")}
             className={
               activeView === "list"
@@ -39,7 +39,7 @@ export default function RosterHeader({
             }>
             <RiFileListFill className='h-4 w-4 mr-2' />
             List View
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

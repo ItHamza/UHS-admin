@@ -11,6 +11,8 @@ import {
   RiBookmarkLine,
   RiSettings4Line,
   RiCloseLine,
+  RiTeamFill,
+  RiCalculatorFill,
 } from "react-icons/ri";
 
 interface SidebarProps {
@@ -26,7 +28,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Customers", href: "/customers", icon: RiUserLine },
     { name: "Bookings", href: "/bookings", icon: RiBookmarkLine },
     { name: "Schedules", href: "/schedules", icon: RiCalendarLine },
-    { name: "Roster Management", href: "/roster", icon: RiTeamLine },
+    { name: "Roster Management", href: "/roster", icon: RiCalculatorFill },
+    { name: "Teams", href: "/teams", icon: RiTeamFill },
     { name: "Settings", href: "/settings", icon: RiSettings4Line },
   ];
 

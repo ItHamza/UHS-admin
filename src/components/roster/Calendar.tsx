@@ -23,7 +23,8 @@ import {
   parseISO,
 } from "date-fns";
 import RosterAction from "@/actions/roster";
-import TeamsAction from "@/actions/team";
+import { TeamsAction } from "@/actions/team";
+import { useRouter } from "next/navigation";
 
 const statusColors = {
   Working: "bg-blue-600",
@@ -123,6 +124,7 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
   onBack,
 }) => {
   const [expandTeamDetails, setExpandTeamDetails] = useState(false);
+  const navigation = useRouter();
   return (
     <div className='bg-white rounded-lg shadow-lg'>
       {/* Header */}
@@ -186,7 +188,11 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
                   <p className='text-lg font-semibold mt-2'>
                     {schedule.user?.name}
                   </p>
-                  <p className='text-sm cursor-pointer font-semibold underline text-blue-500'>
+                  <p
+                    onClick={() => {
+                      navigation.push("/bookings");
+                    }}
+                    className='text-sm cursor-pointer font-semibold underline text-blue-500'>
                     View Booking
                   </p>
                 </div>
@@ -197,7 +203,11 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
               <div>
                 <h3 className='text-sm font-medium text-gray-500'>Booked By</h3>
                 <p className='text-lg font-semibold'>{schedule.user?.name}</p>
-                <p className='text-sm cursor-pointer font-semibold underline text-blue-500'>
+                <p
+                  onClick={() => {
+                    navigation.push("/bookings");
+                  }}
+                  className='text-sm cursor-pointer font-semibold underline text-blue-500'>
                   View Booking
                 </p>
               </div>
@@ -816,10 +826,10 @@ const ScheduleCalendar: React.FC = () => {
               </div>
             )}
           </div>
-          <button className='flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 md:px-3 py-2 rounded text-sm'>
+          {/* <button className='flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 md:px-3 py-2 rounded text-sm'>
             <Plus size={16} />
             <span className='hidden md:inline'>Add Schedule</span>
-          </button>
+          </button> */}
         </div>
       </div>
       <div className='flex flex-col sm:flex-row justify-between sm:items-center mb-4 space-y-2 sm:space-y-0'>

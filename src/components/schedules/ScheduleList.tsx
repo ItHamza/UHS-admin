@@ -4,7 +4,7 @@ import React, { useEffect, useState, useTransition } from "react";
 import { Schedule } from "@/types/schedule";
 import ScheduleFilter from "./ScheduleFilter";
 import ScheduleDetail from "./ScheduleDetail";
-import ScheduleAction from "@/actions/schedule";
+import { ScheduleAction } from "@/actions/schedule";
 
 const SchedulesList: React.FC = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(

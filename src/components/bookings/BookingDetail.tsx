@@ -249,11 +249,12 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
           window.location.reload();
         }}
       />
-      <RescheduleModal
-        isOpen={isRescheduleModalOpen}
-        onClose={() => setIsRescheduleModalOpen(false)}
-        booking={booking}
-      />
+      {isRescheduleModalOpen && (
+        <RescheduleModal
+          pkg={booking}
+          onClose={() => setIsRescheduleModalOpen(false)}
+        />
+      )}
       <CancelModal
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}

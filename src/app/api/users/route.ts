@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       apartment_number,
       lat,
       lng,
+      team_id,
     } = await req.json();
 
     if (!name || !email || !phone) {
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
       apartment_number,
       lat,
       lng,
+      team_id,
     };
     const userRes = await fetch(`${BASE_URL}/users`, {
       method: "POST",

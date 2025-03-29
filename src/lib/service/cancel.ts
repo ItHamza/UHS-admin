@@ -7,3 +7,10 @@ export const cancelBooking = async (bookingId: string) => {
     body: JSON.stringify({ bookingId }),
   });
 };
+
+export const cancelSingleBooking = async (teamAvailabilityId: string) => {
+  return apiRequest<any>("/cancel-booking/single", {
+    method: "POST",
+    body: JSON.stringify({ teamAvailabilityId }),
+  });
+};

@@ -13,6 +13,21 @@ async function fetchBookings() {
   return data.data || [];
 }
 
+const residenceDurationMap: any = {
+  Studio: 45,
+  "1BHK Apartment": 60,
+  "1BHK + Study Room": 90,
+  "2BHK Apartment": 120,
+  "2BHK Townhouse": 150,
+  "3BHK Apartment": 150,
+  "3BHK Townhouse": 180,
+  "3BHK Villa": 210,
+  "4BHK Apartment": 210,
+  "4BHK Villa": 240,
+  "5BHK Apartment": 300,
+  "5BHK Villa": 300,
+};
+
 async function getServices(ids: any[]) {
   if (!ids || ids.length === 0) return []; // Ensure no empty calls
   try {
@@ -81,6 +96,9 @@ export async function GET() {
           duration: duration,
           paymentStatus: booking.payment_status,
           instructions: booking.special_instructions,
+          serviceMinutes: booking.residence_type?.type
+            ? residenceDurationMap[booking.residence_type.type] || 0
+            : 0,
           services, // Services are now correctly handled
           ...booking,
         };

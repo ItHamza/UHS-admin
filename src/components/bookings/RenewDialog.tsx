@@ -10,8 +10,11 @@ import {
   residenceDurationMap,
   TimeSlot,
 } from "./BookingsHeader";
+import BlockBookingAction from "@/actions/block";
+import toast from "react-hot-toast";
+import ConfirmBookingAction from "@/actions/confirmBooking";
+import Loader from "../ui/loader";
 
-// Define types for new selections
 interface Bundle {
   id: string;
   name: string;
@@ -37,7 +40,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
   bookingData,
   onRenew,
 }) => {
-  // Constants
   const SERVICE_DURATION = [1, 3, 6, 12];
   const [bundles, setBundles] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -46,7 +48,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
     {}
   );
 
-  // State management
   const [step, setStep] = useState<number>(1);
   const [months, setMonths] = useState<number | undefined>(1);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -62,7 +63,37 @@ const RenewModal: React.FC<RenewModalProps> = ({
     calendar: false,
     booking: false,
     timeslot: false,
+    blockSchedule: false,
   });
+
+  const [blockingTimer, setBlockingTimer] = useState<number | null>(null);
+  const [isBlockingTimerActive, setIsBlockingTimerActive] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string[]>([]);
+  const [calendar, setCalendar] = useState<any[]>([]);
+
+  const startBlockingTimer = () => {
+    setIsBlockingTimerActive(true);
+    setBlockingTimer(600);
+  };
+
+  useEffect(() => {
+    let timerId: NodeJS.Timeout;
+    if (isBlockingTimerActive && blockingTimer !== null && blockingTimer > 0) {
+      timerId = setInterval(() => {
+        setBlockingTimer((prev) => {
+          if (prev !== null && prev <= 1) {
+            clearInterval(timerId);
+            setIsBlockingTimerActive(false);
+            return 0;
+          }
+          return (prev as number) - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [isBlockingTimerActive, blockingTimer]);
 
   const fetchBundles = async () => {
     try {
@@ -153,8 +184,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
     }
   };
 
-  const [selectedDay, setSelectedDay] = useState<string[]>([]);
-
   const handleTimeSlotSelection = (slot: any, day: string, date: string) => {
     let newSelections = { ...selectedSlots };
 
@@ -188,7 +217,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
     setTimeSlotsSelected(selectedSlotsList);
   };
 
-  const [calendar, setCalendar] = useState<any[]>([]);
   const fetchCalendar = async (startDate: string, endDate: string) => {
     try {
       setLoading((prev) => ({ ...prev, calendar: true }));
@@ -229,15 +257,125 @@ const RenewModal: React.FC<RenewModalProps> = ({
         );
   };
 
-  const handleRenew = () => {
-    if (months && startDate && selectedBundle && selectedTimeSlot) {
-      onRenew({
-        months,
-        startDate,
-        bundle: selectedBundle,
-        timeSlot: selectedTimeSlot,
+  const blockSchedule = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, blockSchedule: true }));
+      let timeslotsSelected: any[] = [];
+
+      const selectedBundleId = selectedBundle?.id;
+
+      const selectedSlotsArray = bundles[0].teams.flatMap((team: any) =>
+        team.availableBundles
+          .filter((av: any) => av.bundleId === selectedBundleId)
+          .flatMap((av: any) =>
+            Object.entries(selectedSlots).map(
+              ([day, slotInfo]: [string, any]) => {
+                const startTime = slotInfo.split("_")[1].split("-")[0];
+                const endTime = slotInfo.split("_")[1].split("-")[1];
+
+                const scheduleId = slotInfo.split("_")[0];
+                const matchingTimeSlots = av.days
+                  .filter((d: any) => d.day === day)
+                  ?.flatMap((d: any) => d.timeSlots)
+                  .filter(
+                    (slot: any) =>
+                      slot.startTime === startTime && slot.endTime === endTime
+                  );
+
+                timeslotsSelected = [
+                  ...timeslotsSelected,
+                  ...matchingTimeSlots,
+                ];
+
+                return matchingTimeSlots.map((matchSlot: any) => ({
+                  schedule_id: scheduleId,
+                  start_time: startTime,
+                  end_time: endTime,
+                  day: day,
+                }));
+              }
+            )
+          )
+          .flat()
+          .filter(Boolean)
+      );
+
+      const endDate =
+        bookingData.frequency !== "one_time"
+          ? moment(startDate).add(months, "months").format("YYYY-MM-DD")
+          : moment(bookingData.startDate).add(1, "day").format("YYYY-MM-DD");
+
+      const firstTimeslot = timeslotsSelected[0];
+      const startTime = firstTimeslot ? firstTimeslot.startTime : "00:00";
+      const endTime = firstTimeslot ? firstTimeslot.endTime : "00:00";
+
+      const formattedEndDate =
+        bookingData.frequency === "one_time"
+          ? `${endDate}T${endTime}:00`
+          : endDate;
+
+      const data: any = {
+        userPhone: bookingData.user.phone,
+        no_of_cleaners: 2,
+        userId: bookingData.user.id,
+        timeslots:
+          bookingData.frequency === "one_time"
+            ? timeslotsSelected.slice(0, 1).map((ts) => ({
+                start_time: ts.startTime + ":00",
+                end_time: ts.endTime + ":00",
+                schedule_id: ts.scheduleId,
+              }))
+            : timeslotsSelected.map((ts) => ({
+                start_time: ts.startTime + ":00",
+                end_time: ts.endTime + ":00",
+                schedule_id: ts.scheduleId,
+              })),
+        teamId: selectedTeamId,
+        areaId: bookingData.area.id,
+        districtId: bookingData.district.id,
+        propertyId: bookingData.property.id,
+        residenceTypeId: bookingData.residence_type.id,
+        startDate:
+          bookingData.frequency === "one_time"
+            ? moment(bookingData.startDate).format("YYYY-MM-DD") +
+              "T" +
+              startTime
+            : moment(bookingData.startDate).format("YYYY-MM-DD"),
+        endDate: formattedEndDate,
+        frequency: bookingData.frequency,
+        userAvailableInApartment: bookingData.user_available_in_apartment,
+        specialInstructions: bookingData.instructions,
+        appartmentNumber: bookingData.appartment_number,
+        serviceId: bookingData.service.id,
+      };
+      const bookingId = await BlockBookingAction(data);
+      startBlockingTimer();
+
+      //   console.log("block data", data, selectedSlots);
+      setLoading((prev) => ({ ...prev, blockSchedule: false }));
+    } catch (error: any) {
+      setLoading((prev) => ({ ...prev, blockSchedule: false }));
+      console.log("error", error);
+      toast.error(error.message || "something went wrong");
+    }
+  };
+
+  const handleRenew = async () => {
+    try {
+      setLoading((prev) => ({ ...prev, blockSchedule: true }));
+      const response = await ConfirmBookingAction({
+        userPhone: bookingData.user.phone,
+        specialInstructions: bookingData.instructions,
+        appartmentNumber: bookingData.appartment_number,
+        userAvailableInApartment: bookingData.user_available_in_apartment,
       });
+      console.log("Service booked successfully:", response);
+      window.location.reload();
       onClose();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading((prev) => ({ ...prev, blockSchedule: false }));
     }
   };
 
@@ -247,17 +385,21 @@ const RenewModal: React.FC<RenewModalProps> = ({
       fetchBundles();
     } else if (step === 2 && selectedBundleId) {
       fetchTimeSlots(selectedBundleId as string);
+    } else if (step === 3) {
+      blockSchedule();
     }
   };
+
   const prevStep = () => setStep((prev) => prev - 1);
 
   useEffect(() => {
     if (months) {
       const endDate = moment(bookingData.end_date)
         .add(1, "days")
+        .add(months, "months")
         .format("YYYY-MM-DD");
       fetchCalendar(
-        moment(bookingData.date).add(1, "days").format("YYYY-MM-DD"),
+        moment(bookingData.end_date).add(1, "days").format("YYYY-MM-DD"),
         endDate
       );
     }
@@ -275,7 +417,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
         return (
           <div className='space-y-4'>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {/* Duration Selection */}
               <div className='space-y-2'>
                 <label className='block text-sm font-medium text-gray-700'>
                   Duration (Months)
@@ -297,7 +438,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
                 </div>
               </div>
 
-              {/* Start Date Selection */}
               <div className='space-y-2'>
                 <label className='block text-sm font-medium text-gray-700'>
                   Start Date
@@ -335,13 +475,13 @@ const RenewModal: React.FC<RenewModalProps> = ({
         return (
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold mb-4'>Select Bundle</h3>
-            <div className='grid md:grid-cols-3 gap-4'>
+            <div className='grid md:grid-cols-1 gap-4'>
               {bundles.length > 0 ? (
-                <div className='grid grid-cols-1 gap-3'>
+                <div className='grid grid-cols-1  gap-3'>
                   {bundles[0].bundles.map((bundle: any) => (
                     <div
                       key={bundle.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition ${
+                      className={`p-4 border rounded-lg col-span-2 w-full cursor-pointer transition ${
                         selectedBundleId === bundle.id
                           ? "border-blue-500 bg-blue-50"
                           : "border-gray-300 hover:border-blue-300"
@@ -355,9 +495,6 @@ const RenewModal: React.FC<RenewModalProps> = ({
                           <h4 className='font-medium text-gray-900'>
                             {bundle.title}
                           </h4>
-                          {/* <p className='text-gray-600'>
-                                  {bundle.duration} mins
-                                </p> */}
                         </div>
                         {selectedBundleId === bundle.id && (
                           <div className='w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white'>
@@ -397,7 +534,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
         return (
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold mb-4'>Select Time Slot</h3>
-            <div className='grid md:grid-cols-3 gap-4'>
+            <div className='grid md:grid-cols-1 gap-4'>
               {timeSlots.length > 0 ? (
                 <div className='space-y-4'>
                   {timeSlots.slice(0, getSliceEndIndex()).map((day) => (
@@ -443,9 +580,9 @@ const RenewModal: React.FC<RenewModalProps> = ({
               </button>
               <button
                 onClick={nextStep}
-                disabled={!selectedSlots}
+                disabled={!selectedSlots || loading.blockSchedule}
                 className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Next: Review Details{" "}
+                Next: Block timeslots{" "}
                 <ChevronRight className='inline-block ml-2' />
               </button>
             </div>
@@ -456,6 +593,19 @@ const RenewModal: React.FC<RenewModalProps> = ({
         return (
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold mb-4'>Renewal Summary</h3>
+
+            {isBlockingTimerActive && blockingTimer !== null && (
+              <div className='bg-yellow-100 border border-yellow-300 p-4 rounded-lg flex items-center justify-between'>
+                <div className='flex items-center'>
+                  <Clock className='mr-2 text-yellow-600' />
+                  <span className='text-yellow-800'>
+                    Time slots blocked for {Math.floor(blockingTimer / 60)}:
+                    {blockingTimer % 60 < 10 ? "0" : ""}
+                    {blockingTimer % 60}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className='border p-4 rounded-lg space-y-4 bg-gray-50'>
               <div className='grid grid-cols-2 gap-2'>
@@ -517,11 +667,16 @@ const RenewModal: React.FC<RenewModalProps> = ({
                 className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'>
                 <ChevronLeft className='inline-block mr-2' /> Previous
               </button>
-              <button
-                onClick={handleRenew}
-                className='px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700'>
-                Confirm Renewal
-              </button>
+              {!loading.blockSchedule ? (
+                <button
+                  onClick={handleRenew}
+                  disabled={loading.blockSchedule}
+                  className='px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700'>
+                  Confirm Renewal
+                </button>
+              ) : (
+                <Loader />
+              )}
             </div>
           </div>
         );
@@ -532,8 +687,8 @@ const RenewModal: React.FC<RenewModalProps> = ({
   };
 
   return (
-    <div className='fixed inset-0 z-50  bg-black/50 overflow-scroll '>
-      <div className='bg-white rounded-lg shadow-xl w-[600px] max-w-full p-6'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center   bg-black/50 overflow-scroll '>
+      <div className='bg-white rounded-lg shadow-xl w-[600px] max-h-[500px] overflow-scroll max-w-full p-6'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-xl font-semibold'>Renew Service</h2>
           <button

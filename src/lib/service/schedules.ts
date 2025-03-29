@@ -7,3 +7,13 @@ export const getSchedules = async () => {
 export const getScheduleById = async (id: string) => {
   return apiRequest<any>(`/schedule/${id}`);
 };
+
+export const generateSchedule = async (data: any) => {
+  return apiRequest<any>("/schedule", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+};

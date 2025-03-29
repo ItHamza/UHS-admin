@@ -14,6 +14,8 @@ import ConfirmBookingAction from "@/actions/confirmBooking";
 import CalendarAction from "@/actions/calendar";
 import CustomDatePicker from "../ui/custom-date-picker";
 import { UserCreateAction, UsersActions } from "@/actions/users";
+import toast from "react-hot-toast";
+import { noFocusStyle } from "@/utils/styles";
 
 const durations = [1, 3, 6, 12];
 export const residenceDurationMap: any = {
@@ -641,7 +643,18 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         userPhone: bookingData.phoneNumber,
         no_of_cleaners: 2,
         userId: selectedUserId,
-        timeslots: timeslotsSelected,
+        timeslots:
+          bookingData.frequency === "one_time"
+            ? timeslotsSelected.slice(0, 1).map((ts) => ({
+                start_time: ts.startTime + ":00",
+                end_time: ts.endTime + ":00",
+                schedule_id: ts.scheduleId,
+              }))
+            : timeslotsSelected.map((ts) => ({
+                start_time: ts.startTime + ":00",
+                end_time: ts.endTime + ":00",
+                schedule_id: ts.scheduleId,
+              })),
         teamId: selectedTeamId,
         areaId: bookingData.area,
         districtId: bookingData.district,
@@ -665,9 +678,10 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       setBookingId("bookingId");
       setIsLoading(false);
       setShowSummary(true);
-    } catch (error) {
+    } catch (error: any) {
       setIsLoading(false);
       console.log("error", error);
+      toast.error(error.message || "something went wrong");
     }
   };
 
@@ -875,9 +889,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   };
 
   if (!isOpen) return null;
-
-  const noFocusStyle =
-    "outline-none focus:outline-none focus:ring-0 focus:border-gray-300";
 
   return (
     <>

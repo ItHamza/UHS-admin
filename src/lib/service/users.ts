@@ -13,3 +13,13 @@ export async function createUser(data: any) {
     body: JSON.stringify(data),
   });
 }
+
+export async function updateTeam(data: any) {
+  return apiRequest<any>("/users/update-team", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
