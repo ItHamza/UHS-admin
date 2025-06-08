@@ -48,11 +48,18 @@ interface TeamData {
 }
 
 const SERVICES = ["Regular", "Deep", "Special"]
+
+const AREAS = [
+  { id: "area1", name: "The Pearl Island" },
+  { id: "area2", name: "Doha City" },
+  { id: "area3", name: "Lusail" },
+]
+
 const DISTRICTS = [
-  { value: "district1", label: "District 1" },
-  { value: "district2", label: "District 2" },
-  { value: "district3", label: "District 3" },
-  { value: "district4", label: "District 4" },
+  { id: "district1", name: "District 1" },
+  { id: "district2", name: "District 2" },
+  { id: "district3", name: "District 3" },
+  { id: "district4", name: "District 4" },
 ]
 
 const TEAM_TYPES = [
@@ -525,7 +532,7 @@ export default function TeamCreationModal() {
             required
           >
             <option value="">Select district</option>
-            {districts.map((district) => (
+            {DISTRICTS.map((district) => (
               <option key={district.id} value={district.id}>
                 {district.name}
               </option>
