@@ -508,7 +508,7 @@ export default function TeamCreationModal() {
             required
           >
             <option value="">Select area</option>
-            {areas.map((area) => (
+            {AREAS.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.name}
               </option>
