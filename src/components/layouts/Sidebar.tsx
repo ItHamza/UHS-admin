@@ -13,6 +13,8 @@ import {
   RiCloseLine,
   RiTeamFill,
   RiCalculatorFill,
+  RiMapPinRangeFill,
+  RiPrinterFill,
 } from "react-icons/ri";
 
 interface SidebarProps {
@@ -30,6 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Schedules", href: "/schedules", icon: RiCalendarLine },
     { name: "Roster Management", href: "/roster", icon: RiCalculatorFill },
     { name: "Teams", href: "/teams", icon: RiTeamFill },
+    { name: "Project Management", href: "/managements", icon: RiMapPinRangeFill },
+    { name: "Price Management", href: "/pricing", icon: RiPrinterFill },
     { name: "Settings", href: "/settings", icon: RiSettings4Line },
   ];
 
