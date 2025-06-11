@@ -121,6 +121,14 @@ const initialServices: Service[] = [
   },
 ]
 
+const TABS = [
+                { name: "Areas", icon: MapPinIcon },
+                { name: "Districts", icon: MapPinIcon },
+                { name: "Properties", icon: BuildingOfficeIcon },
+                { name: "Residence Types", icon: HomeIcon },
+                { name: "Services", icon: WrenchIcon },
+              ]
+
 export default function ProjectManagement() {
   // State
   const [areas, setAreas] = useState<Area[]>(initialAreas)
@@ -621,28 +629,21 @@ export default function ProjectManagement() {
 
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           <Tab.Group>
-            <Tab.List className="flex bg-gray-100 border-b">
-              {[
-                { name: "Areas", icon: MapPinIcon },
-                { name: "Districts", icon: MapPinIcon },
-                { name: "Properties", icon: BuildingOfficeIcon },
-                { name: "Residence Types", icon: HomeIcon },
-                { name: "Services", icon: WrenchIcon },
-              ].map((tab) => (
+            <Tab.List className="grid grid-cols-2 gap-2 mb-4 bg-gray-100 sm:flex sm:border-b sm:gap-0">
+              {TABS.map((tab) => (
                 <Tab
                   key={tab.name}
                   className={({ selected }) =>
-                    `py-3 px-6 text-sm font-medium focus:outline-none ${
+                    `text-sm focus:outline-none flex items-center space-x-2 ${
                       selected
-                        ? "text-blue-700 border-b-2 border-blue-700 bg-white"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                    }`
+                        ? "text-blue-700 bg-blue-100 sm:bg-white sm:border-b-2 sm:border-blue-700 bg-white"
+                        : "text-gray-700 sm:text-gray-500 sm:hover:text-gray-700 sm:hover:bg-gray-50"
+                    } 
+                    p-4 sm:px-6 sm:py-3 border sm:border-none rounded-lg sm:rounded-none`
                   }
-                >
-                  <div className="flex items-center">
-                    <tab.icon className="h-5 w-5 mr-2" />
-                    {tab.name}
-                  </div>
+                  >
+                  <tab.icon className="h-5 w-5" />
+                  {tab.name}
                 </Tab>
               ))}
             </Tab.List>
@@ -936,7 +937,7 @@ export default function ProjectManagement() {
                             <h3 className="text-lg font-medium text-gray-900">{service.name}</h3>
                             <p className="text-sm text-gray-500">{service.description}</p>
                           </div>
-                          <div className="flex space-x-2">
+                          <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                             <button
                               onClick={() => openModal("subService", { serviceId: service.id })}
                               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

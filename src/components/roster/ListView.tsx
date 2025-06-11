@@ -254,113 +254,132 @@ export default function RosterListView() {
 
         {/* Bookings List */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          {processedBookings.length === 0 ? (
-            <div className="text-center py-12">
-              <CalendarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
-              <p className="text-gray-600">No bookings scheduled for the selected date and team.</p>
-            </div>
-          ) : (
-            <>
-              {/* Table Header */}
-              <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="col-span-1">Team</div>
-                  <div className="col-span-2">Time</div>
-                  <div className="col-span-1">Service</div>
-                  <div className="col-span-2">Area</div>
-                  <div className="col-span-2">Location</div>
-                  <div className="col-span-2">Apartment</div>
-                  <div className="col-span-1">Type</div>
-                  <div className="col-span-1">Status</div>
-                </div>
+          <div className="hidden md:block">
+            {processedBookings.length === 0 ? (
+              <div className="text-center py-12">
+                <CalendarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
+                <p className="text-gray-600">No bookings scheduled for the selected date and team.</p>
               </div>
+            ) : (
+              <>
+                {/* Table Header */}
+                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
+                  <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="col-span-1">Team</div>
+                    <div className="col-span-2">Time</div>
+                    <div className="col-span-1">Service</div>
+                    <div className="col-span-2">Area</div>
+                    <div className="col-span-2">Location</div>
+                    <div className="col-span-2">Apartment</div>
+                    <div className="col-span-1">Type</div>
+                    <div className="col-span-1">Status</div>
+                  </div>
+                </div>
 
-              {/* Table Body */}
-              <div className="divide-y divide-gray-200">
-                {processedBookings.map((booking, index) => (
-                  <div
-                    key={booking.id}
-                    className={`px-6 py-4 hover:bg-gray-50 transition-colors ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                    }`}
-                  >
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Team */}
-                      <div className="col-span-1">
-                        <div className="flex items-center">
-                          <UsersIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm font-medium text-gray-900">{booking.team_no}</span>
+                {/* Table Body */}
+                <div className="divide-y divide-gray-200">
+                  {processedBookings.map((booking, index) => (
+                    <div
+                      key={booking.id}
+                      className={`px-6 py-4 hover:bg-gray-50 transition-colors ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      }`}
+                    >
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        {/* Team */}
+                        <div className="col-span-1">
+                          <div className="flex items-center">
+                            <UsersIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-sm font-medium text-gray-900">{booking.team_no}</span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Time */}
-                      <div className="col-span-2">
-                        <div className="flex items-center">
-                          <ClockIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">
-                            {booking.timeFrom} - {booking.timeTo}
+                        {/* Time */}
+                        <div className="col-span-2">
+                          <div className="flex items-center">
+                            <ClockIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-sm text-gray-900">
+                              {booking.timeFrom} - {booking.timeTo}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Service */}
+                        <div className="col-span-1">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              SERVICE_COLORS[booking.service as keyof typeof SERVICE_COLORS]
+                            }`}
+                          >
+                            {booking.service}
                           </span>
                         </div>
-                      </div>
 
-                      {/* Service */}
-                      <div className="col-span-1">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            SERVICE_COLORS[booking.service as keyof typeof SERVICE_COLORS]
-                          }`}
-                        >
-                          {booking.service}
-                        </span>
-                      </div>
-
-                      {/* Area */}
-                      <div className="col-span-2">
-                        <div className="flex items-center">
-                          <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{booking.area}</div>
-                            <div className="text-xs text-gray-500">{booking.subarea}</div>
+                        {/* Area */}
+                        <div className="col-span-2">
+                          <div className="flex items-center">
+                            <MapPinIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{booking.area}</div>
+                              <div className="text-xs text-gray-500">{booking.subarea}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Location */}
-                      <div className="col-span-2">
-                        <div className="flex items-center">
-                          <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{booking.tower}</div>
-                            <div className="text-xs text-gray-500">Apt {booking.apartmentNo}</div>
+                        {/* Location */}
+                        <div className="col-span-2">
+                          <div className="flex items-center">
+                            <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{booking.tower}</div>
+                              <div className="text-xs text-gray-500">Apt {booking.apartmentNo}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Apartment */}
-                      <div className="col-span-2">
-                        <div className="text-sm text-gray-900">#{booking.apartmentNo}</div>
-                      </div>
+                        {/* Apartment */}
+                        <div className="col-span-2">
+                          <div className="text-sm text-gray-900">#{booking.apartmentNo}</div>
+                        </div>
 
-                      {/* Type */}
-                      <div className="col-span-1">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            APARTMENT_TYPE_COLORS[booking.apartmentType as keyof typeof APARTMENT_TYPE_COLORS]
-                          }`}
-                        >
-                          {booking.apartmentType}
-                        </span>
-                      </div>
+                        {/* Type */}
+                        <div className="col-span-1">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              APARTMENT_TYPE_COLORS[booking.apartmentType as keyof typeof APARTMENT_TYPE_COLORS]
+                            }`}
+                          >
+                            {booking.apartmentType}
+                          </span>
+                        </div>
 
-                      {/* Status */}
-                      <div className="col-span-1">{getStatusBadge(booking.status)}</div>
+                        {/* Status */}
+                        <div className="col-span-1">{getStatusBadge(booking.status)}</div>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div> {/* close md:block */}
+          <div className="md:hidden divide-y divide-gray-200">
+            {processedBookings.map((booking) => (
+              <div key={booking.id} className="p-4">
+                <div className="rounded-lg border p-4 shadow-sm bg-gray-50">
+                  <div className="text-sm font-medium text-gray-900 mb-2">
+                    <b>Team</b> {booking.team_no} - {booking.timeFrom} to {booking.timeTo}
                   </div>
-                ))}
+                  <div className="text-sm text-gray-700 mb-1"><b>Service:</b> {booking.service}</div>
+                  <div className="text-sm text-gray-700 mb-1"><b>Area:</b> {booking.area} / {booking.subarea}</div>
+                  <div className="text-sm text-gray-700 mb-1"><b>Tower:</b> {booking.tower}, Apt {booking.apartmentNo}</div>
+                  <div className="text-sm text-gray-700 mb-1"><b>Type:</b> {booking.apartmentType}</div>
+                  <div className="text-sm text-gray-700 mb-1"><b>Status:</b> {getStatusBadge(booking.status)}</div>
+                </div>
               </div>
-            </>
-          )}
+            ))}
+          </div>
+
         </div>
 
         {/* Summary */}
@@ -391,6 +410,7 @@ export default function RosterListView() {
             </div>
           </div>
         )}
+        
       </div>
     </div>
   )
