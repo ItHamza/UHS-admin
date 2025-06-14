@@ -16,6 +16,7 @@ import CustomDatePicker from "../ui/custom-date-picker";
 import { UserCreateAction, UsersActions } from "@/actions/users";
 import toast from "react-hot-toast";
 import { noFocusStyle } from "@/utils/styles";
+import { Combobox } from "@headlessui/react";
 
 const durations = [1, 3, 6, 12];
 export const residenceDurationMap: any = {
@@ -155,6 +156,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   const [properties, setProperties] = useState<any[]>([]);
   const [frequencies, setFrequencies] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const [residenceTypes, setResidenceTypes] = useState<any[]>([]);
   const [timeLeft, setTimeLeft] = useState(600);
@@ -179,6 +181,13 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       setIsLoading(false);
     }
   };
+
+  const filteredUsers = query === ""
+    ? users
+    : users.filter((u) =>
+      `${u.name} ${u.phone}`.toLowerCase().includes(query.toLowerCase())
+    );
+
 
   const createNewUser = async () => {
     try {
@@ -1087,42 +1096,41 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                           <label className='block font-medium text-gray-700'>
                             Select Existing Customer
                           </label>
-                          <select
-                            value={selectedUserId || ""}
-                            onChange={(e) => {
-                              const userId = e.target.value;
-                              setSelectedUserId(userId);
-                              if (userId) {
-                                const selectedUser = users.find(
-                                  (u) => u.id === userId
-                                );
-                                if (selectedUser) {
-                                  setBookingData((prev) => ({
-                                    ...prev,
-                                    userName: selectedUser.name,
-                                    phoneNumber: selectedUser.phone,
-                                    email: selectedUser.email,
-                                  }));
-                                  setFinalBookingData((prev) => ({
-                                    ...prev,
-                                    userId: selectedUser.id,
-                                    userPhone: `%2b${selectedUser.phone.replace(
-                                      /\D/g,
-                                      ""
-                                    )}`,
-                                  }));
-                                }
-                              }
-                            }}
-                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                            required>
-                            <option value=''>Select a customer</option>
-                            {users.map((user) => (
-                              <option key={user.id} value={user.id}>
-                                {user.name} - {user.phone}
-                              </option>
-                            ))}
-                          </select>
+                          <Combobox value={selectedUserId} onChange={(userId) => {
+                            setSelectedUserId(userId);
+                            const selectedUser = users.find((u) => u.id === userId);
+                            if (selectedUser) {
+                              setBookingData((prev) => ({
+                                ...prev,
+                                userName: selectedUser.name,
+                                phoneNumber: selectedUser.phone,
+                                email: selectedUser.email,
+                              }));
+                              setFinalBookingData((prev) => ({
+                                ...prev,
+                                userId: selectedUser.id,
+                                userPhone: `%2b${selectedUser.phone.replace(/\D/g, "")}`,
+                              }));
+                            }
+                          }}>
+                            <Combobox.Input
+                              onChange={(e) => setQuery(e.target.value)}
+                              displayValue={(userId) => {
+                                const u = users.find((u) => u.id === userId);
+                                return u ? `${u.name} - ${u.phone}` : "";
+                              }}
+                              className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                              placeholder="Select a customer"
+                              required
+                            />
+                            <Combobox.Options className="absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg">
+                              {filteredUsers.map((user) => (
+                                <Combobox.Option key={user.id} value={user.id} className="cursor-pointer px-4 py-2 hover:bg-gray-100">
+                                  {user.name} - {user.phone}
+                                </Combobox.Option>
+                              ))}
+                            </Combobox.Options>
+                          </Combobox>
                         </div>
 
                         <div className='text-center'>
