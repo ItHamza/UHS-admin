@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: any }> }) {
   try {
-    const userId = params.id;
+    const { id } = await params;
     const body = await req.json();
 
-    if (!userId) {
+    if (!id) {
       return NextResponse.json(
         {
           success: false,
@@ -17,7 +17,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         { status: 400 }
       );
     }
-    const userRes = await fetch(`${BASE_URL}/users/${userId}`, {
+    const userRes = await fetch(`${BASE_URL}/users/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -40,22 +40,31 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const userId = params.id;
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: any }> }) {
 
-  if (!userId) {
-    return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
+   try {
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json({ success: false, message: "User ID is required" }, { status: 400 });
+    }
+
+    const userRes = await fetch(`${BASE_URL}/users/${id}`, {
+      method: "DELETE",
+    });
+
+    const deleteRes = await userRes.json();
+    return NextResponse.json({
+      success: true,
+      message: "User deleted successfully",
+      data: deleteRes,
+    });
+  } catch (error: any) {
+    console.error("Error updating user:", error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
   }
-
-  const userRes = await fetch(`${BASE_URL}/users/${userId}`, {
-    method: "DELETE",
-  });
-
-  const deleteRes = await userRes.json();
-
-  return NextResponse.json({
-    success: true,
-    message: "User deleted successfully",
-    data: deleteRes,
-  });
+  
 }
