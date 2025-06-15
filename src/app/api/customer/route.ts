@@ -43,6 +43,7 @@ export async function GET() {
         const address = getAddress(user);
 
         return {
+          base_id: user.id,
           id: user.user_number,
           name: user.name,
           status: user.is_active ? "Active" : "Inactive",
@@ -51,6 +52,8 @@ export async function GET() {
           address,
           phone: user.phone,
           email: user.email,
+          apartmentNumber: user.apartment_number,
+          residenceType: user.residenceType
         };
       })
     );

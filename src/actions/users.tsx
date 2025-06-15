@@ -1,6 +1,6 @@
 "use server";
 import { getAllMembers } from "@/lib/service/teams";
-import { createUser, getUsers, updateTeam } from "@/lib/service/users";
+import { createUser, deleteUser, getUsers, updateTeam, updateUser } from "@/lib/service/users";
 
 export async function UsersActions() {
   const users = await getUsers();
@@ -25,4 +25,14 @@ export async function UserUpdateAction(user: any[], team_id?: string | null) {
 export async function TeamMembersAction() {
   const users = await getAllMembers();
   return users.data;
+}
+
+export async function UserUpdateDetailAction(user: any) {
+  const users = await updateUser(user);
+  return users.data;
+}
+
+export async function UserDeleteAction(id: string) {
+  const res = await deleteUser(id);
+  return res.data;
 }

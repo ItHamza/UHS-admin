@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useTransition } from "react";
 import CustomerDetail from "./CustomerDetails";
 import CustomerAction from "@/actions/customer";
+import EditCustomerModal from "./EditCustomerDailog";
+import { UserDeleteAction } from "@/actions/users";
+import toast from "react-hot-toast";
 
 interface Customer {
   id: string;
@@ -18,6 +21,8 @@ interface Customer {
   notes: string;
   status: "Active" | "Inactive";
   joinDate: string;
+  residence_type: any;
+  [key: string]: any;
 }
 
 const CustomersList: React.FC = () => {
@@ -25,6 +30,9 @@ const CustomersList: React.FC = () => {
     null
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const [showEditUser, setShowEditUser] = useState<boolean>(false);
+  
 
   const [customers, setCustomers] = useState<Customer[]>([]);
 
@@ -41,104 +49,6 @@ const CustomersList: React.FC = () => {
       }
     });
   }, []);
-  // Sample data
-  // const customers: Customer[] = [
-  //   {
-  //     id: "C-10245",
-  //     name: "Alex Johnson",
-  //     email: "alex.johnson@example.com",
-  //     phone: "(555) 123-4567",
-  //     address: "123 Main St, Anytown, CA 94105",
-  //     type: "residential",
-  //     services: ["Regular Cleaning", "Deep Cleaning"],
-  //     totalBookings: 12,
-  //     lastBooking: "2025-03-15",
-  //     totalSpent: 1450,
-  //     notes:
-  //       "Prefers cleaning on weekends. Has a dog that should be kept in the backyard during service.",
-  //     status: "active",
-  //     joinDate: "2024-06-10",
-  //   },
-  //   {
-  //     id: "C-10246",
-  //     name: "Maria Garcia",
-  //     email: "maria.g@example.com",
-  //     phone: "(555) 234-5678",
-  //     address: "456 Oak Ave, Somewhere, CA 94107",
-  //     type: "residential",
-  //     services: ["Deep Cleaning", "Move In/Out"],
-  //     totalBookings: 8,
-  //     lastBooking: "2025-03-12",
-  //     totalSpent: 980,
-  //     notes:
-  //       "Allergic to strong cleaning products. Prefers eco-friendly options.",
-  //     status: "active",
-  //     joinDate: "2024-08-22",
-  //   },
-  //   {
-  //     id: "C-10252",
-  //     name: "TechCorp Inc.",
-  //     email: "facilities@techcorp.com",
-  //     phone: "(555) 789-0123",
-  //     address: "789 Business Blvd, Downtown, CA 94111",
-  //     type: "commercial",
-  //     services: ["Regular Cleaning", "Special Events"],
-  //     totalBookings: 24,
-  //     lastBooking: "2025-03-16",
-  //     totalSpent: 5200,
-  //     notes:
-  //       "Weekly office cleaning on Mondays and Thursdays. Special attention to conference rooms.",
-  //     status: "active",
-  //     joinDate: "2024-05-01",
-  //   },
-  //   {
-  //     id: "C-10273",
-  //     name: "James Wilson",
-  //     email: "jwilson@example.com",
-  //     phone: "(555) 345-6789",
-  //     address: "321 Cedar Ln, Elsewhere, CA 94110",
-  //     type: "residential",
-  //     services: ["Post-Construction", "Deep Cleaning"],
-  //     totalBookings: 5,
-  //     lastBooking: "2025-02-28",
-  //     totalSpent: 860,
-  //     notes:
-  //       "Recently renovated home. Needs special care for new wooden floors.",
-  //     status: "active",
-  //     joinDate: "2024-11-05",
-  //   },
-  //   {
-  //     id: "C-10291",
-  //     name: "Riverfront Restaurant",
-  //     email: "manager@riverfront.com",
-  //     phone: "(555) 456-7890",
-  //     address: "159 River St, Waterside, CA 94133",
-  //     type: "commercial",
-  //     services: ["Regular Cleaning", "Deep Cleaning", "Special Events"],
-  //     totalBookings: 18,
-  //     lastBooking: "2025-03-14",
-  //     totalSpent: 4150,
-  //     notes:
-  //       "Early morning cleaning before 6 AM. Strict health code compliance required.",
-  //     status: "active",
-  //     joinDate: "2024-07-15",
-  //   },
-  //   {
-  //     id: "C-10234",
-  //     name: "Emily Chen",
-  //     email: "emily.chen@example.com",
-  //     phone: "(555) 567-8901",
-  //     address: "753 Maple Dr, Suburb, CA 94112",
-  //     type: "residential",
-  //     services: ["Regular Cleaning"],
-  //     totalBookings: 3,
-  //     lastBooking: "2025-01-20",
-  //     totalSpent: 320,
-  //     notes: "Has cats. Please ensure doors are kept closed at all times.",
-  //     status: "inactive",
-  //     joinDate: "2024-12-10",
-  //   },
-  // ];
 
   const handleViewCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -173,6 +83,31 @@ const CustomersList: React.FC = () => {
       </div>
     </div>
   );
+
+  const handleEditCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setShowEditUser(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await UserDeleteAction(id);
+      toast.success("User deleted successfully");
+      // Optional: refresh or update local state here
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.error("Failed to delete user");
+    } finally {
+      refreshCustomers()
+    }
+  };
+
+
+  const refreshCustomers = async () => {
+    const data = await CustomerAction();
+    setCustomers(data);
+  };
+
 
   return (
     <div className='bg-white rounded-lg shadow overflow-hidden'>
@@ -297,10 +232,14 @@ const CustomersList: React.FC = () => {
                     </span>
                   </td>
                   <td className='px-6 gap-2 flex items-center py-4 whitespace-nowrap text-right text-sm font-medium'>
-                    <button className='text-indigo-600 cursor-pointer hover:text-indigo-900'>
+                    <button
+                      onClick={() => handleEditCustomer(customer)}
+                      className='text-indigo-600 cursor-pointer hover:text-indigo-900'>
                       Edit
                     </button>
-                    <button className='text-red-600 cursor-pointer hover:text-red-900'>
+                    <button
+                      onClick={() => handleDelete(customer.base_id)}
+                      className='text-red-600 cursor-pointer hover:text-red-900'>
                       Delete
                     </button>
                   </td>
@@ -401,6 +340,15 @@ const CustomersList: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {showEditUser && (
+        <EditCustomerModal
+          customer={selectedCustomer}
+          isOpen={showEditUser}
+          onClose={() => {
+            setShowEditUser(!showEditUser);
+          }}
+        />
       )}
     </div>
   );
