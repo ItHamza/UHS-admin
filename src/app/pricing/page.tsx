@@ -1,3 +1,4 @@
+import PricingManagementRedesigned from "@/components/managements/new-price-management";
 import PricingManagement from "@/components/managements/price-management"
 
 export const metadata = {
@@ -7,6 +8,6 @@ export const metadata = {
 
 export default function PricingPage() {
   return (
-    <PricingManagement />
+    <PricingManagementRedesigned />
   )
 }
