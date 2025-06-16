@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
@@ -30,3 +30,45 @@ export async function GET() {
     );
   }
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const {
+      type
+    } = await req.json();
+  
+    if (!type) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing required fields in the request body",
+        },
+        { status: 400 }
+      );
+    }
+    const data = {
+      type
+    };
+    const residenceRes = await fetch(`${BASE_URL}/residences`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const createRes = await residenceRes.json();
+    return NextResponse.json({
+      success: true,
+      message: "Residence created successfully",
+      data: createRes,
+    });
+  } catch (error: any) {
+    console.error("Error rescheduling:", error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}
+

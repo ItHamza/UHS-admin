@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
@@ -24,6 +24,51 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("Error fetching or transforming bookings:", error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+
+export async function POST(req: NextRequest) {
+  try {
+    const {
+      name,
+      latitude,
+      longitude,
+    } = await req.json();
+    if (!name || !latitude || !longitude) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing required fields in the request body",
+        },
+        { status: 400 }
+      );
+    }
+    const data = {
+      name,
+      latitude,
+      longitude,
+    };
+    const areaRes = await fetch(`${BASE_URL}/areas`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const createRes = await areaRes.json();
+    return NextResponse.json({
+      success: true,
+      message: "Area created successfully",
+      data: createRes,
+    });
+  } catch (error: any) {
+    console.error("Error rescheduling:", error);
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }

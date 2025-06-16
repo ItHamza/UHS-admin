@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { startTransition, useEffect, useState } from "react"
 import { Tab } from "@headlessui/react"
 import {
   PlusIcon,
@@ -12,130 +12,75 @@ import {
   WrenchIcon,
 } from "@heroicons/react/24/outline"
 import toast from "react-hot-toast"
+import AreaAction, { AreaDeleteAction, AreaCreateAction, AreaUpdateAction } from "@/actions/area"
+import DistrictAction, { DistrictCreateAction, DistrictUpdateAction, districtDeleteAction } from "@/actions/district"
+import { PropertyAction, PropertyCreateAction, PropertyUpdateAction, PropertyDeleteAction } from "@/actions/property"
+import ResidenceAction, { ResidenceCreateAction, ResidenceUpdateAction, ResidenceDeleteAction } from "@/actions/residence"
+import { fetchChildServices, fetchServices } from "@/lib/service/service"
 
 // Types
 interface Area {
   id: string
   name: string
+  latitude: string
+  longitude: string
 }
 
 interface District {
   id: string
   name: string
   areaId: string
+  latitude: string
+  longitude: string
 }
 
 interface Property {
   id: string
   name: string
   districtId: string
-  address: string
+  latitude: string
+  longitude: string
 }
 
 interface ResidenceType {
   id: string
-  name: string
+  type: string
   description: string
 }
 
 interface Service {
   id: string
   name: string
-  description: string
   subServices: SubService[]
 }
 
 interface SubService {
   id: string
   name: string
-  serviceId: string
-  description: string
+  parent_id: string | null
+  photo_url?: string
+  no_of_cleaners: number
+  cleaning_supply_included: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Dummy Data
-const initialAreas: Area[] = [
-  { id: "a1", name: "Doha City" },
-  { id: "a2", name: "The Pearl Island" },
-  { id: "a3", name: "Lusail" },
-]
-
-const initialDistricts: District[] = [
-  { id: "d1", name: "West Bay", areaId: "a1" },
-  { id: "d2", name: "Katara", areaId: "a1" },
-  { id: "d3", name: "Al Sadd", areaId: "a1" },
-  { id: "d4", name: "Abraj Quartier", areaId: "a2" },
-  { id: "d5", name: "Porto Arabia", areaId: "a2" },
-  { id: "d6", name: "Viva Bahriya", areaId: "a2" },
-  { id: "d7", name: "Fox Hills", areaId: "a3" },
-  { id: "d8", name: "Marina", areaId: "a3" },
-  { id: "d9", name: "Lusail Waterfront", areaId: "a3" },
-]
-
-const initialProperties: Property[] = [
-  { id: "p1", name: "Burj Al Mana", districtId: "d1", address: "123 Main St" },
-  { id: "p2", name: "Al Gasssar Resort", districtId: "d2", address: "789 Business Rd" },
-  { id: "p3", name: "JMJ Residence", districtId: "d3", address: "456 Park Ave" },
-  { id: "p4", name: "Tower 1", districtId: "d4", address: "101 Sunset Blvd" },
-  { id: "p5", name: "Tower 12", districtId: "d5", address: "101 Sunset Blvd" },
-  { id: "p6", name: "Shark Tower", districtId: "d6", address: "101 Sunset Blvd" },
-  { id: "p7", name: "Al Jasra 1", districtId: "d7", address: "101 Sunset Blvd" },
-  { id: "p8", name: "Al Jasra 15", districtId: "d8", address: "101 Sunset Blvd" },
-  { id: "p9", name: "The Seef", districtId: "d9", address: "101 Sunset Blvd" },
-]
-
-const initialResidenceTypes: ResidenceType[] = [
-  { id: "rt1", name: "1BHK", description: "One Bedroom Hall Kitchen" },
-  { id: "rt2", name: "2BHK", description: "Two Bedroom Hall Kitchen" },
-  { id: "rt3", name: "3BHK", description: "Three Bedroom Hall Kitchen" },
-  { id: "rt4", name: "Studio", description: "Studio Apartment" },
-]
-
-const initialServices: Service[] = [
-  {
-    id: "s1",
-    name: "Residential Cleaning",
-    description: "Standard cleaning service",
-    subServices: [
-      { id: "ss1", name: "Regular Cleaning", serviceId: "s1", description: "Dust removal from surfaces" },
-      { id: "ss2", name: "Deep Cleaning", serviceId: "s1", description: "Floor vacuuming" },
-      { id: "ss3", name: "Specialized Cleaning", serviceId: "s1", description: "Floor vacuuming" },
-    ],
-  },
-  {
-    id: "s2",
-    name: "Deep Cleaning",
-    description: "Thorough cleaning service",
-    subServices: [
-      { id: "ss3", name: "Kitchen Deep Clean", serviceId: "s2", description: "Deep cleaning of kitchen" },
-      { id: "ss4", name: "Bathroom Deep Clean", serviceId: "s2", description: "Deep cleaning of bathrooms" },
-    ],
-  },
-  {
-    id: "s3",
-    name: "Special Cleaning",
-    description: "Specialized cleaning services",
-    subServices: [
-      { id: "ss5", name: "Window Cleaning", serviceId: "s3", description: "Cleaning of windows" },
-      { id: "ss6", name: "Carpet Cleaning", serviceId: "s3", description: "Deep cleaning of carpets" },
-    ],
-  },
-]
-
 const TABS = [
-                { name: "Areas", icon: MapPinIcon },
-                { name: "Districts", icon: MapPinIcon },
-                { name: "Properties", icon: BuildingOfficeIcon },
-                { name: "Residence Types", icon: HomeIcon },
-                { name: "Services", icon: WrenchIcon },
-              ]
+  { name: "Areas", icon: MapPinIcon },
+  { name: "Districts", icon: MapPinIcon },
+  { name: "Properties", icon: BuildingOfficeIcon },
+  { name: "Residence Types", icon: HomeIcon },
+  { name: "Services", icon: WrenchIcon },
+]
 
 export default function ProjectManagement() {
   // State
-  const [areas, setAreas] = useState<Area[]>(initialAreas)
-  const [districts, setDistricts] = useState<District[]>(initialDistricts)
-  const [properties, setProperties] = useState<Property[]>(initialProperties)
-  const [residenceTypes, setResidenceTypes] = useState<ResidenceType[]>(initialResidenceTypes)
-  const [services, setServices] = useState<Service[]>(initialServices)
+  const [areas, setAreas] = useState<Area[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
+  const [properties, setProperties] = useState<Property[]>([])
+  const [residenceTypes, setResidenceTypes] = useState<ResidenceType[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -181,69 +126,144 @@ export default function ProjectManagement() {
     resetForm()
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     switch (modalType) {
       case "area":
-        if (!formData.name?.trim()) {
-          toast.error("Area name is required")
+        if (
+          !formData.name?.trim() ||
+          !formData?.latitude?.toString()?.trim() ||
+          !formData.longitude?.toString()?.trim()
+        ) {
+          toast.error("Area name, longitude and latitude are required")
           return
         }
         if (editingItem) {
-          setAreas(areas.map((area) => (area.id === editingItem.id ? { ...area, ...formData } : area)))
-          toast.success("Area updated successfully")
+          try {
+            setLoading(true)
+            const responseArea = await AreaUpdateAction(formData)
+            setAreas(areas.map((area) => (area.id === editingItem.id ? { ...area, ...formData } : area)))
+            toast.success("Area updated successfully")
+          } catch (error: any) {
+            console.error("Error updating area:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newArea = { id: `a${Date.now()}`, ...formData }
-          setAreas([...areas, newArea])
-          toast.success("Area added successfully")
+          try {
+            setLoading(true)
+            const responseArea = await AreaCreateAction(formData)
+            setAreas([...areas, responseArea])
+            toast.success("Area added successfully")
+          } catch (error: any) {
+            console.error("Error creating area:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
 
       case "district":
-        if (!formData.name?.trim() || !formData.areaId) {
-          toast.error("District name and area are required")
+        if (!formData.name?.trim() || !formData.areaId || !formData?.latitude?.toString()?.trim() ||
+          !formData.longitude?.toString()?.trim()) {
+          toast.error("District name, latitude, longitude and area are required")
           return
         }
         if (editingItem) {
-          setDistricts(
-            districts.map((district) => (district.id === editingItem.id ? { ...district, ...formData } : district)),
-          )
-          toast.success("District updated successfully")
+          try {
+            setLoading(true)
+            const responseDistrict = await DistrictUpdateAction(formData)
+            setDistricts(
+              districts.map((district) => (district.id === editingItem.id ? { ...district, ...formData } : district)),
+            )
+            toast.success("District updated successfully")
+          } catch (error: any) {
+            console.error("Error updating district:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newDistrict = { id: `d${Date.now()}`, ...formData }
-          setDistricts([...districts, newDistrict])
-          toast.success("District added successfully")
+          try {
+            setLoading(true)
+            const responseDistrict = await DistrictCreateAction(formData)
+            setDistricts([...districts, responseDistrict])
+            toast.success("District added successfully")
+          } catch (error: any) {
+            console.error("Error creating district:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
 
       case "property":
-        if (!formData.name?.trim() || !formData.districtId || !formData.address?.trim()) {
-          toast.error("Property name, district, and address are required")
+        if (!formData.name?.trim() || !formData.districtId || !formData?.latitude?.toString()?.trim() ||
+          !formData.longitude?.toString()?.trim()) {
+          toast.error("Property name, district, latitude and longitude are required")
           return
         }
         if (editingItem) {
-          setProperties(
-            properties.map((property) => (property.id === editingItem.id ? { ...property, ...formData } : property)),
-          )
-          toast.success("Property updated successfully")
+          try {
+            setLoading(true)
+            const responseProperty = await PropertyUpdateAction(formData)
+            setProperties(
+              properties.map((property) => (property.id === editingItem.id ? { ...property, ...formData } : property)),
+            )
+            toast.success("Property updated successfully")
+          } catch (error: any) {
+            console.error("Error updating property:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newProperty = { id: `p${Date.now()}`, ...formData }
-          setProperties([...properties, newProperty])
-          toast.success("Property added successfully")
+          try {
+            setLoading(true)
+            const responseProperty = await PropertyCreateAction(formData)
+            setProperties([...properties, responseProperty])
+            toast.success("Property added successfully")
+          } catch (error: any) {
+            console.error("Error creating property:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
 
       case "residenceType":
-        if (!formData.name?.trim()) {
+        if (!formData.type?.trim()) {
           toast.error("Residence type name is required")
           return
         }
         if (editingItem) {
-          setResidenceTypes(residenceTypes.map((rt) => (rt.id === editingItem.id ? { ...rt, ...formData } : rt)))
-          toast.success("Residence type updated successfully")
+          try {
+            setLoading(true)
+            const responseResidence = await ResidenceUpdateAction(formData)
+            setResidenceTypes(residenceTypes.map((rt) => (rt.id === editingItem.id ? { ...rt, ...formData } : rt)))
+            toast.success("Residence type updated successfully")
+          } catch (error: any) {
+            console.error("Error updating residence type:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newResidenceType = { id: `rt${Date.now()}`, ...formData }
-          setResidenceTypes([...residenceTypes, newResidenceType])
-          toast.success("Residence type added successfully")
+          try {
+            setLoading(true)
+            debugger;
+            const responseResidence = await ResidenceCreateAction(formData)
+            setResidenceTypes([...residenceTypes, responseResidence])
+            toast.success("Residence type added successfully")
+          } catch (error: any) {
+            console.error("Error creating residence type:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
 
@@ -301,7 +321,7 @@ export default function ProjectManagement() {
     setDeleteConfirmOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!itemToDelete) return
 
     const { type, id } = itemToDelete
@@ -315,8 +335,17 @@ export default function ProjectManagement() {
           setItemToDelete(null)
           return
         }
-        setAreas(areas.filter((area) => area.id !== id))
-        toast.success("Area deleted successfully")
+        try {
+          setLoading(true)
+          const deleteArea = await AreaDeleteAction(id)
+          setAreas(areas.filter((area) => area.id !== id))
+          toast.success("Area deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting area:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
       case "district":
         const hasProperties = properties.some((property) => property.districtId === id)
@@ -326,16 +355,43 @@ export default function ProjectManagement() {
           setItemToDelete(null)
           return
         }
-        setDistricts(districts.filter((district) => district.id !== id))
-        toast.success("District deleted successfully")
+        try {
+          setLoading(true)
+          const deleteDistrict = await districtDeleteAction(id)
+          setDistricts(districts.filter((district) => district.id !== id))
+          toast.success("District deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting district:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
       case "property":
-        setProperties(properties.filter((property) => property.id !== id))
-        toast.success("Property deleted successfully")
+        try {
+          setLoading(true)
+          const deleteProperty = await PropertyDeleteAction(id)
+          setProperties(properties.filter((property) => property.id !== id))
+          toast.success("Property deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting property:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
       case "residenceType":
-        setResidenceTypes(residenceTypes.filter((rt) => rt.id !== id))
-        toast.success("Residence type deleted successfully")
+        try {
+          setLoading(true)
+          const deleteResidence = await ResidenceDeleteAction(id)
+          setResidenceTypes(residenceTypes.filter((rt) => rt.id !== id))
+          toast.success("Residence type deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting residence type:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
       case "service":
         setServices(services.filter((service) => service.id !== id))
@@ -382,31 +438,43 @@ export default function ProjectManagement() {
       switch (modalType) {
         case "area":
           return (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Area Name</label>
-              <input
-                type="text"
-                value={formData.name || ""}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter area name"
-              />
-            </div>
-          )
-
-        case "district":
-          return (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">District Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area Name</label>
                 <input
                   type="text"
                   value={formData.name || ""}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter district name"
+                  placeholder="Enter area name"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area Latitude</label>
+                <input
+                  type="text"
+                  value={formData.latitude || ""}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter area latitude"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area Longitude</label>
+                <input
+                  type="text"
+                  value={formData.longitude || ""}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter area longitude"
+                />
+              </div>
+            </>
+          )
+
+        case "district":
+          return (
+            <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
                 <select
@@ -427,7 +495,37 @@ export default function ProjectManagement() {
                       {area.name}
                     </option>
                   ))}
-                </select>  
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">District Name</label>
+                <input
+                  type="text"
+                  value={formData.name || ""}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter district name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">District Latitude</label>
+                <input
+                  type="text"
+                  value={formData.latitude || ""}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter district latitude"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">District Longitude</label>
+                <input
+                  type="text"
+                  value={formData.longitude || ""}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter district longitude"
+                />
               </div>
             </>
           )
@@ -435,16 +533,6 @@ export default function ProjectManagement() {
         case "property":
           return (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property Name</label>
-                <input
-                  type="text"
-                  value={formData.name || ""}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter property name"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
                 <select
@@ -468,13 +556,33 @@ export default function ProjectManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Name</label>
                 <input
                   type="text"
-                  value={formData.address || ""}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  value={formData.name || ""}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter property address"
+                  placeholder="Enter property name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Latitude</label>
+                <input
+                  type="text"
+                  value={formData.latitude || ""}
+                  onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter property latitude"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property Longitude</label>
+                <input
+                  type="text"
+                  value={formData.longitude || ""}
+                  onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter property longitude"
                 />
               </div>
             </>
@@ -487,8 +595,8 @@ export default function ProjectManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Residence Type Name</label>
                 <input
                   type="text"
-                  value={formData.name || ""}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.type || ""}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter residence type name"
                 />
@@ -590,9 +698,7 @@ export default function ProjectManagement() {
         {isModalOpen && (
           <div className="fixed inset-0 z-10 flex items-center justify-center p-4 bg-gray-500/40">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">
-                {getTitle()}
-              </h3>
+              <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">{getTitle()}</h3>
 
               <div className="space-y-4">{renderFormFields()}</div>
 
@@ -600,22 +706,89 @@ export default function ProjectManagement() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={loading}
+                  className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  {editingItem ? "Update" : "Add"}
+                  {loading ? "Processing..." : editingItem ? "Update" : "Add"}
                 </button>
               </div>
             </div>
           </div>
         )}
       </>
+    )
+  }
+
+  useEffect(() => {
+    startTransition(async () => {
+      try {
+        setLoading(true)
+
+        const area = await AreaAction()
+        setAreas(area)
+
+        const district = await DistrictAction()
+        setDistricts(district)
+
+        const property = await PropertyAction()
+        setProperties(property)
+
+        const residenceResponse = await ResidenceAction()
+        setResidenceTypes(residenceResponse)
+
+        const servicesResponse = await fetchServices()
+        setServices(servicesResponse.data || [])
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        toast.error("Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!services.length || services.every((p) => p.subServices?.length)) return
+
+    startTransition(() => {
+      const loadSubServices = async () => {
+        try {
+          const updated = await Promise.all(
+            services.map(async (parent) => {
+              const response = await fetchChildServices(parent.id)
+              return {
+                ...parent,
+                subServices: response.data || [],
+              }
+            }),
+          )
+          setServices(updated)
+        } catch (error) {
+          console.error("Error fetching sub-services:", error)
+          toast.error("Failed to load sub-services")
+        }
+      }
+
+      loadSubServices()
+    })
+  }, [services])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
     )
   }
 
@@ -641,7 +814,7 @@ export default function ProjectManagement() {
                     } 
                     p-4 sm:px-6 sm:py-3 border sm:border-none rounded-lg sm:rounded-none`
                   }
-                  >
+                >
                   <tab.icon className="h-5 w-5" />
                   {tab.name}
                 </Tab>
@@ -830,7 +1003,7 @@ export default function ProjectManagement() {
                                 <div className="text-sm text-gray-500">{getAreaName(areaId)}</div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-500">{property.address}</div>
+                                <div className="text-sm text-gray-500">{property.longitude}</div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <button
@@ -888,7 +1061,7 @@ export default function ProjectManagement() {
                         {residenceTypes.map((rt) => (
                           <tr key={rt.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{rt.name}</div>
+                              <div className="text-sm font-medium text-gray-900">{rt.type}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-500">{rt.description}</div>
@@ -935,7 +1108,6 @@ export default function ProjectManagement() {
                         <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
                           <div>
                             <h3 className="text-lg font-medium text-gray-900">{service.name}</h3>
-                            <p className="text-sm text-gray-500">{service.description}</p>
                           </div>
                           <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                             <button
@@ -962,7 +1134,7 @@ export default function ProjectManagement() {
                           </div>
                         </div>
 
-                        {service.subServices.length > 0 && (
+                        {service.subServices?.length > 0 && (
                           <div className="px-6 py-4">
                             <h4 className="text-sm font-medium text-gray-700 mb-3">Sub-Services</h4>
                             <div className="overflow-x-auto">
@@ -971,9 +1143,6 @@ export default function ProjectManagement() {
                                   <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Name
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                      Description
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                       Actions
@@ -985,9 +1154,6 @@ export default function ProjectManagement() {
                                     <tr key={subService.id} className="hover:bg-gray-50">
                                       <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-gray-900">{subService.name}</div>
-                                      </td>
-                                      <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-500">{subService.description}</div>
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
@@ -1027,9 +1193,7 @@ export default function ProjectManagement() {
       {deleteConfirmOpen && (
         <div className="fixed inset-0 z-10 flex items-center justify-center p-4 bg-gray-500/40">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">
-              Confirm Delete
-            </h3>
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Confirm Delete</h3>
 
             <div className="mt-2">
               <p className="text-sm text-gray-500">
@@ -1056,7 +1220,6 @@ export default function ProjectManagement() {
           </div>
         </div>
       )}
-
     </div>
   )
 }
