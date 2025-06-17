@@ -17,6 +17,7 @@ import DistrictAction, { DistrictCreateAction, DistrictUpdateAction, districtDel
 import { PropertyAction, PropertyCreateAction, PropertyUpdateAction, PropertyDeleteAction } from "@/actions/property"
 import ResidenceAction, { ResidenceCreateAction, ResidenceUpdateAction, ResidenceDeleteAction } from "@/actions/residence"
 import { fetchChildServices, fetchServices } from "@/lib/service/service"
+import ServicesAction, { ServiceCreateAction, ServiceDeleteAction, ServiceUpdateAction } from "@/actions/service-action"
 
 // Types
 interface Area {
@@ -51,6 +52,10 @@ interface ResidenceType {
 interface Service {
   id: string
   name: string
+  parent_id: string | null
+  photo_url?: string
+  no_of_cleaners: number
+  cleaning_supply_included: boolean
   subServices: SubService[]
 }
 
@@ -254,7 +259,6 @@ export default function ProjectManagement() {
         } else {
           try {
             setLoading(true)
-            debugger;
             const responseResidence = await ResidenceCreateAction(formData)
             setResidenceTypes([...residenceTypes, responseResidence])
             toast.success("Residence type added successfully")
@@ -268,30 +272,49 @@ export default function ProjectManagement() {
         break
 
       case "service":
-        if (!formData.name?.trim()) {
-          toast.error("Service name is required")
+        if (!formData.name?.trim() || !formData.photo_url?.trim()) {
+          toast.error("Service name and photo Url are required")
           return
         }
         if (editingItem) {
-          setServices(
-            services.map((service) => (service.id === editingItem.id ? { ...service, ...formData } : service)),
-          )
-          toast.success("Service updated successfully")
+          try {
+            setLoading(true)
+            const responseService = await ServiceUpdateAction(formData)
+            setServices(services.map((rt) => (rt.id === editingItem.id ? { ...rt, ...formData } : rt)))
+            toast.success("Service updated successfully")
+          } catch (error: any) {
+            console.error("Error updating service type:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newService = { id: `s${Date.now()}`, ...formData, subServices: [] }
-          setServices([...services, newService])
-          toast.success("Service added successfully")
+          try {
+            setLoading(true)
+            const responseService = await ServiceCreateAction(formData)
+            const serviceWithSubServices = { ...responseService.data, subServices: undefined };
+            setServices([...services, serviceWithSubServices])
+            toast.success("Service added successfully")
+          } catch (error: any) {
+            console.error("Error creating service:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
 
       case "subService":
-        if (!formData.name?.trim() || !formData.serviceId) {
+        if (!formData.name?.trim() || !formData.parent_id) {
           toast.error("Sub-service name and parent service are required")
           return
         }
         if (editingItem) {
-          const updatedServices = services.map((service) => {
-            if (service.id === formData.serviceId) {
+          try {
+            setLoading(true)
+            const responseService = await ServiceUpdateAction(formData)
+            const updatedServices = services.map((service) => {
+            if (service.id === formData.parent_id) {
               const updatedSubServices = service.subServices.map((subService) =>
                 subService.id === editingItem.id ? { ...subService, ...formData } : subService,
               )
@@ -299,17 +322,33 @@ export default function ProjectManagement() {
             }
             return service
           })
-          setServices(updatedServices)
-          toast.success("Sub-service updated successfully")
+            setServices(updatedServices)
+            toast.success("Sub-service updated successfully")
+          } catch (error: any) {
+            console.error("Error updating Sub-service type:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         } else {
-          const newSubService = { id: `ss${Date.now()}`, ...formData }
-          const updatedServices = services.map((service) =>
-            service.id === formData.serviceId
-              ? { ...service, subServices: [...service.subServices, newSubService] }
+          try {
+            setLoading(true)
+            const responseService = await ServiceCreateAction(formData)
+
+            const updatedServices = services.map((service) =>
+              service.id === formData.parent_id
+              ? { ...service, subServices: [...service.subServices, responseService.data] }
               : service,
-          )
-          setServices(updatedServices)
-          toast.success("Sub-service added successfully")
+            )
+            setServices(updatedServices)
+          
+            toast.success("Sub-service added successfully")
+          } catch (error: any) {
+            console.error("Error creating Sub-service:", error)
+            toast.error(error.message)
+          } finally {
+            setLoading(false)
+          }
         }
         break
     }
@@ -394,18 +433,37 @@ export default function ProjectManagement() {
         }
         break
       case "service":
-        setServices(services.filter((service) => service.id !== id))
-        toast.success("Service deleted successfully")
+        try {
+          setLoading(true)
+          const deleteService = await ServiceDeleteAction(id)
+          setServices(services.filter((service) => service.id !== id))
+          toast.success("Service deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting service:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
       case "subService":
-        const [serviceId, subServiceId] = id.split(":")
-        const updatedServices = services.map((service) =>
-          service.id === serviceId
-            ? { ...service, subServices: service.subServices.filter((ss) => ss.id !== subServiceId) }
-            : service,
-        )
-        setServices(updatedServices)
-        toast.success("Sub-service deleted successfully")
+        const [parent_id, subServiceId] = id.split(":")
+        try {
+          setLoading(true)
+          const deleteService = await ServiceDeleteAction(subServiceId)
+          setServices(services.filter((service) => service.id !== id))
+          const updatedServices = services.map((service) =>
+            service.id === parent_id
+              ? { ...service, subServices: service.subServices.filter((ss) => ss.id !== subServiceId) }
+              : service,
+            )
+          setServices(updatedServices)
+          toast.success("Sub-service deleted successfully")
+        } catch (error: any) {
+          console.error("Error deleting service:", error)
+          toast.error(error.message)
+        } finally {
+          setLoading(false)
+        }
         break
     }
 
@@ -628,13 +686,34 @@ export default function ProjectManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Photo Url</label>
+                <input
+                  type="text"
+                  value={formData.photo_url || ""}
+                  onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter description"
-                  rows={3}
+                  placeholder="Enter Photo Url"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Number of cleaners</label>
+                <input
+                  type="number"
+                  value={formData.no_of_cleaners || 0}
+                  onChange={(e) => setFormData({ ...formData, no_of_cleaners: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="2"
+                  min="0" max="10"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cleaning Supplies Included</label>
+                <input
+                  type='checkbox'
+                  name='cleaning_supply_included'
+                  checked={formData.cleaning_supply_included || false}
+                  onChange={(e) => setFormData({ ...formData, cleaning_supply_included: e.target.value })}
+                  className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2'
                 />
               </div>
             </>
@@ -657,11 +736,11 @@ export default function ProjectManagement() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Parent Service</label>
                 <select
                   name="service"
-                  value={formData.serviceId || ""}
+                  value={formData.parent_id || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serviceId: e.target.value,
+                      parent_id: e.target.value,
                     })
                   }
                   className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -676,13 +755,34 @@ export default function ProjectManagement() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Photo Url</label>
+                <input
+                  type="text"
+                  value={formData.photo_url || ""}
+                  onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter description"
-                  rows={3}
+                  placeholder="Enter Photo Url"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Number of cleaners</label>
+                <input
+                  type="number"
+                  value={formData.no_of_cleaners || 0}
+                  onChange={(e) => setFormData({ ...formData, no_of_cleaners: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="2"
+                  min="0" max="10"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cleaning Supplies Included</label>
+                <input
+                  type='checkbox'
+                  name='cleaning_supply_included'
+                  checked={formData.cleaning_supply_included || false}
+                  onChange={(e) => setFormData({ ...formData, cleaning_supply_included: e.target.value })}
+                  className='rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2'
                 />
               </div>
             </>
@@ -745,7 +845,11 @@ export default function ProjectManagement() {
         setResidenceTypes(residenceResponse)
 
         const servicesResponse = await fetchServices()
-        setServices(servicesResponse.data || [])
+        const servicseWithSubServices = servicesResponse.data.map((service: any) => ({
+          ...service,
+          subServices: undefined,
+        }));
+        setServices(servicseWithSubServices || [])
       } catch (error) {
         console.error("Error fetching data:", error)
         toast.error("Failed to load data")
@@ -756,13 +860,15 @@ export default function ProjectManagement() {
   }, [])
 
   useEffect(() => {
-    if (!services.length || services.every((p) => p.subServices?.length)) return
+    if (!services.length || services.every((p) => p.subServices !== undefined)) return;
 
     startTransition(() => {
       const loadSubServices = async () => {
         try {
           const updated = await Promise.all(
             services.map(async (parent) => {
+              if (parent.subServices !== undefined) return parent;
+
               const response = await fetchChildServices(parent.id)
               return {
                 ...parent,
@@ -1111,7 +1217,7 @@ export default function ProjectManagement() {
                           </div>
                           <div className="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                             <button
-                              onClick={() => openModal("subService", { serviceId: service.id })}
+                              onClick={() => openModal("subService")}
                               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
                               <PlusIcon className="h-3 w-3 mr-1" />
