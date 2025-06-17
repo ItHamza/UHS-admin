@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
@@ -52,6 +52,55 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("Error fetching or transforming pricing data:", error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const {
+      service_id, residence_type_id, frequency, duration_value, duration_unit, unit_amount, currency, total_services, total_amount
+    } = await req.json();
+  
+    if (!service_id ||
+        !residence_type_id ||
+        !frequency ||
+        !duration_value ||
+        !duration_unit ||
+        !unit_amount ||
+        !currency ||
+        !total_services ||
+        !total_amount) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing required fields in the request body",
+        },
+        { status: 400 }
+      );
+    }
+    const data = {
+      service_id ,residence_type_id ,frequency ,duration_value ,duration_unit ,unit_amount ,currency ,total_services, total_amount
+    };
+    const pricingRes = await fetch(`${BASE_URL}/pricing`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    
+    const createRes = await pricingRes.json();
+    return NextResponse.json({
+      success: true,
+      message: "Residence created successfully",
+      data: createRes,
+    });
+  } catch (error: any) {
+    console.error("Error creating:", error);
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }

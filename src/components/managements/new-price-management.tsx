@@ -15,7 +15,7 @@ import {
   HomeIcon,
 } from "@heroicons/react/24/outline"
 import toast from "react-hot-toast"
-import PricingAction from "@/actions/pricing"
+import PricingAction, { PricingCreateAction, PricingUpdateAction } from "@/actions/pricing"
 import { getPricings } from "@/lib/service/pricing"
 import ResidenceAction from "@/actions/residence"
 import ServicesAction from "@/actions/service-action"
@@ -61,6 +61,18 @@ interface ParentService {
   subServices: Service[]
 }
 
+interface Package {
+  id: string
+  name: string
+  description: string
+  services: string[]
+  frequency: string
+  residenceTypeId: string
+  originalPrice: number
+  discountPercentage: number
+  finalPrice: number
+}
+
 // Fixed frequency values since you don't have a frequency table
 const FREQUENCIES = [
   { value: "one_time", label: "One Time", description: "Single service booking" },
@@ -83,20 +95,50 @@ const CURRENCIES = [
   { value: "EUR", label: "EUR" },
 ]
 
+const initialPackages: Package[] = [
+  {
+    id: "pkg1",
+    name: "Complete Home Package",
+    description: "Regular + Deep cleaning combo",
+    services: ["s1", "s2"],
+    frequency: "f2",
+    residenceTypeId: "rt2",
+    originalPrice: 175,
+    discountPercentage: 25,
+    finalPrice: 131.25,
+  },
+  {
+    id: "pkg2",
+    name: "Premium Package",
+    description: "All services included",
+    services: ["s1", "s2", "s3"],
+    frequency: "f3",
+    residenceTypeId: "rt3",
+    originalPrice: 300,
+    discountPercentage: 30,
+    finalPrice: 210,
+  },
+]
+
 export default function PricingManagementRedesigned() {
   // State
   const [pricingRules, setPricingRules] = useState<PricingRule[]>([])
   const [parentServices, setParentServices] = useState<ParentService[]>([])
   const [childServices, setChildServices] = useState<Service[]>([])
   const [residenceTypes, setResidenceTypes] = useState<ResidenceType[]>([])
+  const [packages, setPackages] = useState<Package[]>(initialPackages)
   const [loading, setLoading] = useState(true)
 
   // Modal states
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false)
+  const [isPackageModalOpen, setIsPackageModalOpen] = useState(false)
   const [editingPricing, setEditingPricing] = useState<PricingRule | null>(null)
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null)
+  
 
   // Form state
   const [pricingForm, setPricingForm] = useState({
+    id: "",
     service_id: "",
     residence_type_id: "",
     frequency: "",
@@ -105,6 +147,17 @@ export default function PricingManagementRedesigned() {
     unit_amount: "",
     currency: "QAR",
     total_services: 1,
+    total_amount: ""
+  })
+
+  const [packageForm, setPackageForm] = useState({
+    name: "",
+    description: "",
+    services: [] as string[],
+    frequency: "",
+    residenceTypeId: "",
+    originalPrice: 0,
+    discountPercentage: 0,
   })
 
   // Filters
@@ -169,7 +222,6 @@ export default function PricingManagementRedesigned() {
             console.error("Error fetching data:", error);
             toast.error("Failed to load data");
           } finally {
-            debugger;
             setLoading(false);
           }
         };
@@ -177,6 +229,17 @@ export default function PricingManagementRedesigned() {
         loadSubServices();
       });
     }, [parentServices]);
+
+    useEffect(() => {
+      const total = calculateTotalAmount();
+
+      if (pricingForm.total_amount !== total) {
+        setPricingForm((prev) => ({
+          ...prev,
+          total_amount: total,
+        }));
+      }
+    }, [pricingForm.unit_amount, pricingForm.total_services]);
 
 
   const fetchInitialData = async () => {
@@ -222,8 +285,9 @@ export default function PricingManagementRedesigned() {
   }
 
   // Helper functions
-  const resetForm = () => {
+  const resetForms = () => {
     setPricingForm({
+      id: "",
       service_id: "",
       residence_type_id: "",
       frequency: "",
@@ -232,9 +296,34 @@ export default function PricingManagementRedesigned() {
       unit_amount: "",
       currency: "QAR",
       total_services: 1,
+      total_amount: ''
+    })
+    setPackageForm({
+      name: "",
+      description: "",
+      services: [],
+      frequency: "",
+      residenceTypeId: "",
+      originalPrice: 0,
+      discountPercentage: 0,
     })
     setSubServices([])
     setEditingPricing(null)
+  }
+
+  const getServiceName = (serviceId: string) => {
+    const service = childServices.find((s) => s.id === serviceId)
+    return service ? service.name : "Unknown Service"
+  }
+
+  const getResidenceTypeName = (residenceTypeId: string) => {
+    const residenceType = residenceTypes.find((rt) => rt.id === residenceTypeId)
+    return residenceType ? residenceType.type : "Unknown Type"
+  }
+
+  const getFrequencyName = (value: string) => {
+    const frequency = FREQUENCIES.find((f) => f.value === value)
+    return frequency ? frequency.label : "Unknown Frequency"
   }
 
   const calculateTotalAmount = () => {
@@ -260,7 +349,6 @@ export default function PricingManagementRedesigned() {
   // Filter pricing rules
   const filteredPricingRules = pricingRules.filter((rule) => {
     if (filters.parentServiceId) {
-      debugger
       // const parentService = parentServices?.find((p) => p.id === filters.parentServiceId)
       if (filters.parentServiceId !== rule.service_id) {
         return false
@@ -275,65 +363,59 @@ export default function PricingManagementRedesigned() {
     return true
   })
 
-  // CRUD operations
   const handleSubmit = async () => {
-    try {
-      if (
-        !pricingForm.service_id ||
-        !pricingForm.residence_type_id ||
-        !pricingForm.frequency ||
-        !pricingForm.unit_amount
-      ) {
-        toast.error("All fields are required")
-        return
-      }
+    if (
+      !pricingForm.service_id ||
+      !pricingForm.residence_type_id ||
+      !pricingForm.frequency ||
+      !pricingForm.duration_value ||
+      !pricingForm.duration_unit ||
+      !pricingForm.unit_amount ||
+      !pricingForm.currency ||
+      !pricingForm.total_services ||
+      !pricingForm.total_amount
+    ) {
+      toast.error("All fields are required")
+      return
+    }
 
-      const totalAmount = calculateTotalAmount()
-      const payload = {
-        ...pricingForm,
-        total_amount: totalAmount,
-        unit_amount: Number.parseFloat(pricingForm.unit_amount).toFixed(2),
-      }
+    if (editingPricing) {
+      try {
+        setLoading(true)
+        const responsePricing = await PricingUpdateAction(pricingForm)
+        setPricingRules(pricingRules.map((pr) => (pr.id === editingPricing.id ? { ...pr, ...pricingForm } : pr)))
 
-      let response
-      if (editingPricing) {
-        response = await fetch(`/api/pricing/${editingPricing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-      } else {
-        response = await fetch("/api/pricing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        })
-      }
-
-      if (response.ok) {
-        const result = await response.json()
-        if (editingPricing) {
-          setPricingRules((prev) => prev.map((rule) => (rule.id === editingPricing.id ? result : rule)))
-          toast.success("Pricing updated successfully")
-        } else {
-          setPricingRules((prev) => [...prev, result])
-          toast.success("Pricing added successfully")
-        }
+        toast.success("Pricing updated successfully")
         setIsPricingModalOpen(false)
-        resetForm()
-      } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to save pricing")
+        resetForms()
+      } catch (error: any) {
+        console.error("Error updating pricing:", error)
+        toast.error(error.message || "Failed to update pricing")
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error("Error saving pricing:", error)
-      toast.error("Failed to save pricing")
+    } else {
+      try {
+        setLoading(true)
+        const responsePricing = await PricingCreateAction(pricingForm)
+        setPricingRules(prev => [...prev, responsePricing.data])
+        toast.success("Pricing added successfully")
+        setIsPricingModalOpen(false)
+        resetForms()
+      } catch (error: any) {
+        console.error("Error creating pricing:", error)
+        toast.error(error.message || "Failed to create pricing")
+      } finally {
+        setLoading(false)
+      }
     }
   }
+
 
   const handleEdit = (pricing: PricingRule) => {
     setEditingPricing(pricing)
     setPricingForm({
+      id: pricing.id,
       service_id: pricing.service_id,
       residence_type_id: pricing.residence_type_id,
       frequency: pricing.frequency,
@@ -342,6 +424,7 @@ export default function PricingManagementRedesigned() {
       unit_amount: pricing.unit_amount,
       currency: pricing.currency,
       total_services: pricing.total_services,
+      total_amount: pricing.total_amount
     })
 
     // Fetch sub-services for the parent service
@@ -351,6 +434,20 @@ export default function PricingManagementRedesigned() {
     }
 
     setIsPricingModalOpen(true)
+  }
+
+  const handleEditPackage = (pkg: Package) => {
+    setEditingPackage(pkg)
+    setPackageForm({
+      name: pkg.name,
+      description: pkg.description,
+      services: pkg.services,
+      frequency: pkg.frequency,
+      residenceTypeId: pkg.residenceTypeId,
+      originalPrice: pkg.originalPrice,
+      discountPercentage: pkg.discountPercentage,
+    })
+    setIsPackageModalOpen(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -371,6 +468,11 @@ export default function PricingManagementRedesigned() {
     }
     setDeleteConfirmOpen(false)
     setItemToDelete(null)
+  }
+
+  const handleDeletePackage = (packageId: string) => {
+    // setItemToDelete({ type: "package", id: packageId })
+    setDeleteConfirmOpen(true)
   }
 
   const confirmDelete = () => {
@@ -466,7 +568,7 @@ export default function PricingManagementRedesigned() {
             </div>
             <button
               onClick={() => {
-                resetForm()
+                resetForms()
                 setIsPricingModalOpen(true)
               }}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -653,6 +755,108 @@ export default function PricingManagementRedesigned() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Specail Packages */}
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+          <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Service Packages</h2>
+              <p className="text-sm text-gray-600">Create bundled service packages with special pricing</p>
+            </div>
+            <button
+              onClick={() => {
+                resetForms()
+                setIsPackageModalOpen(true)
+              }}
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Package
+            </button>
+          </div>
+
+          <div className="p-6">
+            {packages.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <TagIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No packages found</h3>
+                <p className="text-gray-600">Create your first service package to get started.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {packages.map((pkg) => (
+                  <div key={pkg.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">{pkg.name}</h3>
+                        <p className="text-sm text-gray-500">{pkg.description}</p>
+                      </div>
+                      <div className="flex space-x-1">
+                        <button onClick={() => handleEditPackage(pkg)} className="text-blue-600 hover:text-blue-900">
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDeletePackage(pkg.id)} className="text-red-600 hover:text-red-900">
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Services</label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {pkg.services.map((serviceId) => (
+                            <span
+                              key={serviceId}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {getServiceName(serviceId)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Residence Type
+                          </label>
+                          <div className="text-sm text-gray-900">{getResidenceTypeName(pkg.residenceTypeId)}</div>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Frequency
+                          </label>
+                          <div className="text-sm text-gray-900">{getFrequencyName(pkg.frequency)}</div>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-3">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="text-2xl font-bold text-gray-900">${pkg.finalPrice}</div>
+                            {pkg.discountPercentage > 0 && (
+                              <div className="text-sm text-gray-500">
+                                <span className="line-through">${pkg.originalPrice}</span>
+                                <span className="text-green-600 ml-2">Save {pkg.discountPercentage}%</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500">Total Savings</div>
+                            <div className="text-sm font-medium text-green-600">
+                              ${(pkg.originalPrice - pkg.finalPrice).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -867,7 +1071,7 @@ export default function PricingManagementRedesigned() {
                       <div className="bg-gray-50 p-3 rounded-md">
                         <div className="text-sm text-gray-600">Total Amount Preview:</div>
                         <div className="text-lg font-semibold text-gray-900">
-                          {calculateTotalAmount()} {pricingForm.currency}
+                          {pricingForm.total_amount} {pricingForm.currency}
                         </div>
                       </div>
                     )}
