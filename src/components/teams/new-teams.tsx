@@ -1,20 +1,17 @@
 "use client"
 
-import React, { useState, Fragment, useEffect } from "react"
+import React, { useState, Fragment, useEffect, startTransition } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import DatePicker from "react-datepicker"
 import toast from "react-hot-toast"
-import {
-  PlusIcon,
-  XMarkIcon,
-  UsersIcon,
-  CalendarIcon,
-  MapPinIcon,
-  CogIcon,
-} from "@heroicons/react/24/outline"
+import { PlusIcon, XMarkIcon, UsersIcon, CalendarIcon, MapPinIcon, CogIcon } from "@heroicons/react/24/outline"
 import "react-datepicker/dist/react-datepicker.css"
 import AreaAction from "@/actions/area"
 import DistrictAction from "@/actions/district"
+import { PropertyAction } from "@/actions/property"
+import ResidenceAction from "@/actions/residence"
+import { fetchServices, fetchChildServices } from "@/lib/service/service"
+import { CreateTeamAction, CreateTeamMemberAction } from "@/actions/team"
+import { TeamMembersAction } from "@/actions/users"
 import { PlusCircleIcon } from "lucide-react"
 
 interface TeamMember {
@@ -26,109 +23,168 @@ interface TeamMember {
   isExisting: boolean
 }
 
-interface TeamData {
-  teamName: string
-  teamType: string
-  members: TeamMember[]
-  services: string[]
-  location: {
-    area: string
-    district: string
-  }
-  startingDate: Date | null
-  workingHours: {
-    start: string
-    end: string
-  }
-  breakTime: {
-    start: string
-    end: string
-  }
-  daysOff: string[]
+interface Area {
+  id: string
+  name: string
+  latitude: string
+  longitude: string
 }
 
-const SERVICES = ["Regular", "Deep", "Special"]
+interface District {
+  id: string
+  name: string
+  areaId: string
+}
 
-const AREAS = [
-  { id: "area1", name: "The Pearl Island" },
-  { id: "area2", name: "Doha City" },
-  { id: "area3", name: "Lusail" },
-]
+interface Property {
+  id: string
+  name: string
+  districtId: string
+  address: string
+}
 
-const DISTRICTS = [
-  { id: "district1", name: "District 1" },
-  { id: "district2", name: "District 2" },
-  { id: "district3", name: "District 3" },
-  { id: "district4", name: "District 4" },
-]
+interface ResidenceType {
+  id: string
+  type: string
+  description: string
+}
+
+interface Service {
+  id: string
+  name: string
+  subServices: SubService[]
+}
+
+interface SubService {
+  id: string
+  name: string
+  parent_id: string | null
+  photo_url?: string
+  no_of_cleaners: number
+  cleaning_supply_included: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  role?: string
+}
+
+interface TeamData {
+  name: string
+  description?: string
+  team_type: "male" | "female" | "hybrid"
+  lat?: number
+  lng?: number
+  user_ids: string[]
+  service_ids: string[]
+  start_date: string
+  work_start_time: string
+  work_end_time: string
+  break_start_time?: string
+  break_end_time?: string
+  off_days: string[]
+  area_id?: string
+  district_id?: string
+  property_id?: string
+  residence_type_id?: string
+}
 
 const TEAM_TYPES = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
   { value: "hybrid", label: "Hybrid" },
 ]
+
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-// Mock existing members data
-const EXISTING_MEMBERS = [
-  { id: "1", name: "John Doe", email: "john@example.com", phone: "+1234567890", role: "cleaner" },
-  { id: "2", name: "Jane Smith", email: "jane@example.com", phone: "+1234567891", role: "cleaner" },
-  { id: "3", name: "Mike Johnson", email: "mike@example.com", phone: "+1234567892", role: "cleaner" },
-]
-
-
 
 export default function TeamCreationModal() {
   const [isOpen, setIsOpen] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 5
-  const [areas, setAreas] = useState<any[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]);
-  
-  const fetchArea = async () => {
-    try {
-      const area = await AreaAction();
-      setAreas(area);
-    } catch (error) {
-      console.log("error", error);
-    } finally {
-    }
-  };
+  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const fetchDistrict = async (area: string) => {
-    try {
-      const district = await DistrictAction(area);
-      setDistricts(district);
-    } catch (error) {
-      console.log("error", error);
-    }
-  };
-
-  useEffect(() => {
-  if (currentStep === 4 && areas.length === 0) {
-    fetchArea();
-  }
-}, [currentStep]);
+  const [areas, setAreas] = useState<Area[]>([])
+  const [districts, setDistricts] = useState<District[]>([])
+  const [properties, setProperties] = useState<Property[]>([])
+  const [residenceTypes, setResidenceTypes] = useState<ResidenceType[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [teamMembers, setTeamMembers] = useState<User[]>([])
 
   const [teamData, setTeamData] = useState<TeamData>({
-    teamName: "",
-    teamType: "",
-    members: [],
-    services: [],
-    location: { area: "", district: "" },
-    startingDate: null,
-    workingHours: { start: "", end: "" },
-    breakTime: { start: "", end: "" },
-    daysOff: [],
+    name: "",
+    description: "",
+    team_type: "male",
+    lat: undefined,
+    lng: undefined,
+    user_ids: [],
+    service_ids: [],
+    start_date: "",
+    work_start_time: "",
+    work_end_time: "",
+    break_start_time: "",
+    break_end_time: "",
+    off_days: [],
+    area_id: "",
+    district_id: "",
+    property_id: "",
+    residence_type_id: "",
   })
 
   const [showCreateMember, setShowCreateMember] = useState(false)
   const [newMember, setNewMember] = useState({
+    id: "",
     name: "",
     email: "",
     phone: "",
-    role: "cleaner",
+    role: "team_member",
   })
+
+  // Helper functions
+  const getServiceName = (serviceId: string) => {
+    const parentService = services.find((s) => s.id === serviceId)
+    if (parentService) return parentService.name
+
+    for (const service of services) {
+      const subService = service.subServices?.find((ss) => ss.id === serviceId)
+      if (subService) return subService.name
+    }
+    return "Unknown Service"
+  }
+
+  // Filter functions
+  const getFilteredDistricts = () => {
+    return teamData.area_id ? districts.filter((d) => d.areaId === teamData.area_id) : []
+  }
+
+  const getFilteredProperties = () => {
+    return teamData.district_id ? properties.filter((p) => p.districtId === teamData.district_id) : []
+  }
+
+  const getAllServices = () => {
+    const allServices: { id: string; name: string; isParent: boolean }[] = []
+
+    services.forEach((service) => {
+      // Add parent service
+      allServices.push({ id: service.id, name: service.name, isParent: true })
+
+      // Add sub-services
+      service.subServices?.forEach((subService) => {
+        allServices.push({
+          id: subService.id,
+          name: `${service.name} - ${subService.name}`,
+          isParent: false,
+        })
+      })
+    })
+
+    return allServices
+  }
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -142,84 +198,119 @@ export default function TeamCreationModal() {
     }
   }
 
-  const handleAddExistingMember = (member: (typeof EXISTING_MEMBERS)[0]) => {
-    const teamMember: TeamMember = {
-      ...member,
-      isExisting: true,
-    }
-    setTeamData((prev) => ({
-      ...prev,
-      members: [...prev.members, teamMember],
-    }))
-    toast.success(`${member.name} added to team`)
-  }
-
-  const handleCreateAndAddMember = () => {
-    if (newMember.name && newMember.email) {
-      const teamMember: TeamMember = {
-        id: Date.now().toString(),
-        ...newMember,
-        isExisting: false,
-      }
+  const handleAddExistingMember = (user: User) => {
+    if (!teamData.user_ids.includes(user.id)) {
       setTeamData((prev) => ({
         ...prev,
-        members: [...prev.members, teamMember],
+        user_ids: [...prev.user_ids, user.id],
       }))
-      setNewMember({ name: "", email: "", phone: "", role: "cleaner" })
-      setShowCreateMember(false)
-      toast.success(`${teamMember.name} created and added to team`)
+      toast.success(`${user.name} added to team`)
+    } else {
+      toast.error(`${user.name} is already in the team`)
     }
   }
 
-  const handleRemoveMember = (memberId: string) => {
-    const member = teamData.members.find((m) => m.id === memberId)
+  const handleCreateAndAddMember = async () => {
+    if (newMember.name && newMember.email) {
+      try {
+        const newMemberRes = await CreateTeamMemberAction(newMember)
+        setTeamMembers([...teamMembers, newMemberRes])
+        setTeamData((prev) => ({
+          ...prev,
+          user_ids: [...prev.user_ids, newMemberRes.id],
+        }))
+
+        setNewMember({ id: "", name: "", email: "", phone: "", role: "team_member" })
+        setShowCreateMember(false)
+        toast.success(`${newMemberRes.name} created and added to team`)
+      } catch (error: any) {
+        console.error("Error creating user:", error)
+        toast.error(error.message || "Failed to create user")
+      }
+    }
+  }
+
+  const handleRemoveMember = (userId: string) => {
+    const user = teamMembers.find((u) => u.id === userId)
     setTeamData((prev) => ({
       ...prev,
-      members: prev.members.filter((m) => m.id !== memberId),
+      user_ids: prev.user_ids.filter((id) => id !== userId),
     }))
-    if (member) {
-      toast.success(`${member.name} removed from team`)
+    if (user) {
+      toast.success(`${user.name} removed from team`)
     }
   }
 
-  const handleServiceToggle = (service: string) => {
+  const handleServiceToggle = (serviceId: string) => {
     setTeamData((prev) => ({
       ...prev,
-      services: prev.services.includes(service)
-        ? prev.services.filter((s) => s !== service)
-        : [...prev.services, service],
+      service_ids: prev.service_ids.includes(serviceId)
+        ? prev.service_ids.filter((id) => id !== serviceId)
+        : [...prev.service_ids, serviceId],
     }))
   }
 
   const handleDayOffToggle = (day: string) => {
     setTeamData((prev) => ({
       ...prev,
-      daysOff: prev.daysOff.includes(day) ? prev.daysOff.filter((d) => d !== day) : [...prev.daysOff, day],
+      off_days: prev.off_days.includes(day) ? prev.off_days.filter((d) => d !== day) : [...prev.off_days, day],
     }))
   }
 
   const resetModal = () => {
     setCurrentStep(1)
     setTeamData({
-      teamName: "",
-      teamType: "",
-      members: [],
-      services: [],
-      location: { area: "", district: "" },
-      startingDate: null,
-      workingHours: { start: "", end: "" },
-      breakTime: { start: "", end: "" },
-      daysOff: [],
+      name: "",
+      description: "",
+      team_type: "male",
+      lat: undefined,
+      lng: undefined,
+      user_ids: [],
+      service_ids: [],
+      start_date: "",
+      work_start_time: "",
+      work_end_time: "",
+      break_start_time: "",
+      break_end_time: "",
+      off_days: [],
+      area_id: "",
+      district_id: "",
+      property_id: "",
+      residence_type_id: "",
     })
     setShowCreateMember(false)
-    setNewMember({ name: "", email: "", phone: "", role: "cleaner" })
+    setNewMember({ id: "", name: "", email: "", phone: "", role: "team_member" })
   }
 
-  const handleSubmit = () => {
-    console.log("Team Data:", teamData)
-    toast.success("Team created successfully!")
-    setIsOpen(false)
-    resetModal()
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true)
+
+      // Prepare data for API
+      const submitData = {
+        ...teamData,
+        start_date: teamData.start_date,
+        lat: teamData.lat || undefined,
+        lng: teamData.lng || undefined,
+        area_id: teamData.area_id || undefined,
+        district_id: teamData.district_id || undefined,
+        property_id: teamData.property_id || undefined,
+        residence_type_id: teamData.residence_type_id || undefined,
+        break_start_time: teamData.break_start_time || undefined,
+        break_end_time: teamData.break_end_time || undefined,
+      }
+
+      const responseTeam = await CreateTeamAction(submitData)
+      // setTeams([...teams, responseTeam]) // add team somewhere here
+      toast.success("Team created successfully!")
+      setIsOpen(false)
+      resetModal()
+    } catch (error: any) {
+      console.error("Error creating team:", error)
+      toast.error(error.message || "Failed to create team")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const renderStepIndicator = () => (
@@ -264,9 +355,23 @@ export default function TeamCreationModal() {
           <input
             id="teamName"
             type="text"
-            value={teamData.teamName}
-            onChange={(e) => setTeamData((prev) => ({ ...prev, teamName: e.target.value }))}
+            value={teamData.name}
+            onChange={(e) => setTeamData((prev) => ({ ...prev, name: e.target.value }))}
             placeholder="Enter team name"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="teamDescription" className="block text-sm font-medium text-gray-700 mb-1">
+            Description (Optional)
+          </label>
+          <textarea
+            id="teamDescription"
+            value={teamData.description || ""}
+            onChange={(e) => setTeamData((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Enter team description"
+            rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -276,25 +381,60 @@ export default function TeamCreationModal() {
             Team Type
           </label>
           <select
-            name="teamType"
-            value={teamData.teamType}
+            id="teamType"
+            value={teamData.team_type}
             onChange={(e) =>
-              setTeamData((prev) => ({
-                ...prev,
-                teamType: e.target.value,
-              }))
+              setTeamData((prev) => ({ ...prev, team_type: e.target.value as "male" | "female" | "hybrid" }))
             }
-            className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
-            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select team type</option>
             {TEAM_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}
               </option>
             ))}
           </select>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
+              Latitude (Optional)
+            </label>
+            <input
+              id="latitude"
+              type="number"
+              step="any"
+              value={teamData.lat || ""}
+              onChange={(e) =>
+                setTeamData((prev) => ({
+                  ...prev,
+                  lat: e.target.value ? Number.parseFloat(e.target.value) : undefined,
+                }))
+              }
+              placeholder="Enter latitude"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
+              Longitude (Optional)
+            </label>
+            <input
+              id="longitude"
+              type="number"
+              step="any"
+              value={teamData.lng || ""}
+              onChange={(e) =>
+                setTeamData((prev) => ({
+                  ...prev,
+                  lng: e.target.value ? Number.parseFloat(e.target.value) : undefined,
+                }))
+              }
+              placeholder="Enter longitude"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -309,32 +449,36 @@ export default function TeamCreationModal() {
       </div>
 
       {/* Selected Members */}
-      {teamData.members.length > 0 && (
+      {teamData.user_ids.length > 0 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Selected Members ({teamData.members.length})
+            Selected Members ({teamData.user_ids.length})
           </label>
           <div className="space-y-2 max-h-32 overflow-y-auto">
-            {teamData.members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                <div>
-                  <span className="font-medium">{member.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">({member.email})</span>
-                  {!member.isExisting && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ml-2">
-                      New
-                    </span>
-                  )}
+            {teamData.user_ids.map((userId) => {
+              const user = teamMembers.find((u) => u.id === userId)
+              if (!user) return null
+              return (
+                <div key={userId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div>
+                    <span className="font-medium">{user.name}</span>
+                    <span className="text-sm text-gray-500 ml-2">({user.email})</span>
+                    {user.id.startsWith("temp_") && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ml-2">
+                        New
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMember(userId)}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMember(member.id)}
-                  className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -343,21 +487,23 @@ export default function TeamCreationModal() {
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">Add Existing Members</label>
         <div className="grid gap-2 max-h-40 overflow-y-auto">
-          {EXISTING_MEMBERS.filter((member) => !teamData.members.some((tm) => tm.id === member.id)).map((member) => (
-            <div key={member.id} className="flex items-center justify-between p-2 border rounded">
-              <div>
-                <span className="font-medium">{member.name}</span>
-                <span className="text-sm text-gray-500 ml-2">({member.email})</span>
+          {teamMembers
+            .filter((user) => !teamData.user_ids.includes(user.id) && !user.id.startsWith("temp_"))
+            .map((user) => (
+              <div key={user.id} className="flex items-center justify-between p-2 border rounded">
+                <div>
+                  <span className="font-medium">{user.name}</span>
+                  <span className="text-sm text-gray-500 ml-2">({user.email})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddExistingMember(user)}
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Add
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleAddExistingMember(member)}
-                className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Add
-              </button>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 
@@ -446,33 +592,38 @@ export default function TeamCreationModal() {
         <p className="text-sm text-gray-600">Select the services this team will provide</p>
       </div>
 
-      <div className="space-y-3">
-        {SERVICES.map((service) => (
-          <div key={service} className="flex items-center space-x-2">
+      <div className="space-y-3 max-h-60 overflow-y-auto">
+        {getAllServices().map((service) => (
+          <div key={service.id} className="flex items-center space-x-2">
             <input
-              id={service}
+              id={service.id}
               type="checkbox"
-              checked={teamData.services.includes(service)}
-              onChange={() => handleServiceToggle(service)}
+              checked={teamData.service_ids.includes(service.id)}
+              onChange={() => handleServiceToggle(service.id)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <label htmlFor={service} className="text-sm font-medium text-gray-700">
-              {service} Cleaning
+            <label htmlFor={service.id} className="text-sm font-medium text-gray-700">
+              {service.name}
+              {service.isParent && (
+                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Parent Service
+                </span>
+              )}
             </label>
           </div>
         ))}
       </div>
 
-      {teamData.services.length > 0 && (
+      {teamData.service_ids.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Selected Services:</label>
           <div className="flex flex-wrap gap-2">
-            {teamData.services.map((service) => (
+            {teamData.service_ids.map((serviceId) => (
               <span
-                key={service}
+                key={serviceId}
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
               >
-                {service}
+                {getServiceName(serviceId)}
               </span>
             ))}
           </div>
@@ -486,59 +637,99 @@ export default function TeamCreationModal() {
       <div className="text-center">
         <MapPinIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
         <h3 className="text-lg font-semibold mb-2">Assign Location</h3>
-        <p className="text-sm text-gray-600">Set the area and district for this team</p>
+        <p className="text-sm text-gray-600">Set the area, district, property, and residence type for this team</p>
       </div>
 
       <div className="space-y-4">
         <div>
           <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-1">
-            Area
+            Area (Optional)
           </label>
           <select
-            name="area"
-            value={teamData.location.area}
-            onChange={(e) => {
+            id="area"
+            value={teamData.area_id || ""}
+            onChange={(e) =>
               setTeamData((prev) => ({
                 ...prev,
-                location: { ...prev.location, area: e.target.value },
-              }));
-              fetchDistrict(e.target.value)
-            }}
-            className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
-            required
+                area_id: e.target.value || undefined,
+                district_id: "", // Reset dependent fields
+                property_id: "",
+              }))
+            }
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select area</option>
-            {AREAS.map((area) => (
+            <option value="">Select an area</option>
+            {areas.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.name}
               </option>
             ))}
           </select>
         </div>
+
         <div>
           <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-1">
-            District
+            District (Optional)
           </label>
           <select
-            name="district"
-            value={teamData.location.district}
+            id="district"
+            value={teamData.district_id || ""}
             onChange={(e) =>
               setTeamData((prev) => ({
                 ...prev,
-                location: { ...prev.location, district: e.target.value },
+                district_id: e.target.value || undefined,
+                property_id: "", // Reset dependent field
               }))
             }
-            className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
-            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={!teamData.area_id}
           >
-            <option value="">Select district</option>
-            {DISTRICTS.map((district) => (
+            <option value="">Select a district</option>
+            {getFilteredDistricts().map((district) => (
               <option key={district.id} value={district.id}>
                 {district.name}
               </option>
             ))}
           </select>
+        </div>
 
+        <div>
+          <label htmlFor="property" className="block text-sm font-medium text-gray-700 mb-1">
+            Property (Optional)
+          </label>
+          <select
+            id="property"
+            value={teamData.property_id || ""}
+            onChange={(e) => setTeamData((prev) => ({ ...prev, property_id: e.target.value || undefined }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={!teamData.district_id}
+          >
+            <option value="">Select a property</option>
+            {getFilteredProperties().map((property) => (
+              <option key={property.id} value={property.id}>
+                {property.name} - {property.address}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="residenceType" className="block text-sm font-medium text-gray-700 mb-1">
+            Residence Type (Optional)
+          </label>
+          <select
+            id="residenceType"
+            value={teamData.residence_type_id || ""}
+            onChange={(e) => setTeamData((prev) => ({ ...prev, residence_type_id: e.target.value || undefined }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select a residence type</option>
+            {residenceTypes.map((residenceType) => (
+              <option key={residenceType.id} value={residenceType.id}>
+                {residenceType.type}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
@@ -556,12 +747,11 @@ export default function TeamCreationModal() {
         {/* Starting Date */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Starting Date</label>
-          <DatePicker
-            selected={teamData.startingDate}
-            onChange={(date) => setTeamData((prev) => ({ ...prev, startingDate: date }))}
+          <input
+            type="date"
+            value={teamData.start_date}
+            onChange={(e) => setTeamData((prev) => ({ ...prev, start_date: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholderText="Select starting date"
-            dateFormat="yyyy-MM-dd"
           />
         </div>
 
@@ -576,13 +766,8 @@ export default function TeamCreationModal() {
               <input
                 id="workStart"
                 type="time"
-                value={teamData.workingHours.start}
-                onChange={(e) =>
-                  setTeamData((prev) => ({
-                    ...prev,
-                    workingHours: { ...prev.workingHours, start: e.target.value },
-                  }))
-                }
+                value={teamData.work_start_time}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, work_start_time: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -593,13 +778,8 @@ export default function TeamCreationModal() {
               <input
                 id="workEnd"
                 type="time"
-                value={teamData.workingHours.end}
-                onChange={(e) =>
-                  setTeamData((prev) => ({
-                    ...prev,
-                    workingHours: { ...prev.workingHours, end: e.target.value },
-                  }))
-                }
+                value={teamData.work_end_time}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, work_end_time: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -608,8 +788,8 @@ export default function TeamCreationModal() {
 
         {/* Break Time */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Break Time</label>
-          <div className="grid grid-cols-3 gap-3">
+          <label className="block text-sm font-medium text-gray-700">Break Time (Optional)</label>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="breakStart" className="block text-sm font-medium text-gray-700 mb-1">
                 Start
@@ -617,13 +797,8 @@ export default function TeamCreationModal() {
               <input
                 id="breakStart"
                 type="time"
-                value={teamData.breakTime.start}
-                onChange={(e) =>
-                  setTeamData((prev) => ({
-                    ...prev,
-                    breakTime: { ...prev.breakTime, start: e.target.value },
-                  }))
-                }
+                value={teamData.break_start_time || ""}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, break_start_time: e.target.value || undefined }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -634,13 +809,8 @@ export default function TeamCreationModal() {
               <input
                 id="breakEnd"
                 type="time"
-                value={teamData.breakTime.end}
-                onChange={(e) =>
-                  setTeamData((prev) => ({
-                    ...prev,
-                    breakTime: { ...prev.breakTime, end: e.target.value },
-                  }))
-                }
+                value={teamData.break_end_time || ""}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, break_end_time: e.target.value || undefined }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -656,7 +826,7 @@ export default function TeamCreationModal() {
                 <input
                   id={day}
                   type="checkbox"
-                  checked={teamData.daysOff.includes(day)}
+                  checked={teamData.off_days.includes(day)}
                   onChange={() => handleDayOffToggle(day)}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
@@ -666,9 +836,9 @@ export default function TeamCreationModal() {
               </div>
             ))}
           </div>
-          {teamData.daysOff.length > 0 && (
+          {teamData.off_days.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {teamData.daysOff.map((day) => (
+              {teamData.off_days.map((day) => (
                 <span
                   key={day}
                   className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700"
@@ -703,18 +873,89 @@ export default function TeamCreationModal() {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return teamData.teamName && teamData.teamType
+        return teamData.name.trim() && teamData.team_type
       case 2:
-        return teamData.members.length > 0
+        return teamData.user_ids.length > 0
       case 3:
-        return teamData.services.length > 0
+        return teamData.service_ids.length > 0
       case 4:
-        return teamData.location.area && teamData.location.district
+        return true // All location fields are optional
       case 5:
-        return teamData.startingDate && teamData.workingHours.start && teamData.workingHours.end
+        return teamData.start_date && teamData.work_start_time && teamData.work_end_time
       default:
         return false
     }
+  }
+
+  // Data fetching
+  useEffect(() => {
+    if (!isOpen) return
+
+    startTransition(async () => {
+      try {
+        setLoading(true)
+
+        // Fetch all required data
+        const [areaData, districtData, propertyData, residenceData, servicesData, usersData] = await Promise.all([
+          AreaAction(),
+          DistrictAction(),
+          PropertyAction(),
+          ResidenceAction(),
+          fetchServices(),
+          TeamMembersAction(),
+        ])
+
+        setAreas(areaData || [])
+        setDistricts(districtData || [])
+        setProperties(propertyData || [])
+        setResidenceTypes(residenceData || [])
+        setServices(servicesData.data || [])
+        setTeamMembers(usersData || [])
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        toast.error("Failed to load data")
+      } finally {
+        setLoading(false)
+      }
+    })
+  }, [isOpen])
+
+  // Fetch sub-services when services are loaded
+  useEffect(() => {
+    if (!services.length || services.every((s) => s.subServices?.length)) return
+
+    startTransition(async () => {
+      try {
+        const updated = await Promise.all(
+          services.map(async (parent) => {
+            const response = await fetchChildServices(parent.id)
+            return {
+              ...parent,
+              subServices: response.data || [],
+            }
+          }),
+        )
+        setServices(updated)
+      } catch (error) {
+        console.error("Error fetching sub-services:", error)
+        toast.error("Failed to load sub-services")
+      }
+    })
+  }, [services])
+
+  if (loading) {
+    return (
+      <>
+        <button
+          type="button"
+          disabled
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
+        >
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Loading...
+        </button>
+      </>
+    )
   }
 
   return (
@@ -793,14 +1034,14 @@ export default function TeamCreationModal() {
                         <button
                           type="button"
                           onClick={handleSubmit}
-                          disabled={!isStepValid()}
+                          disabled={!isStepValid() || submitting}
                           className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                            isStepValid()
+                            isStepValid() && !submitting
                               ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                               : "bg-blue-400 cursor-not-allowed"
                           }`}
                         >
-                          Create Team
+                          {submitting ? "Creating..." : "Create Team"}
                         </button>
                       ) : (
                         <button
