@@ -22,16 +22,12 @@ interface Team {
   is_active?: boolean
 
   // API field names
-  start_time: string
-  end_time: string
+  work_start_time: string
+  work_end_time: string
   break_start_time?: string
   break_end_time?: string
   start_date: string
   off_days: string | string[] // Can be string or array
-
-  // Computed fields for backward compatibility
-  work_start_time?: string
-  work_end_time?: string
 
   members?: any[]
   services?: any[]
@@ -347,7 +343,7 @@ const TeamsList: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>Created {moment(team.created_at).format("MMM DD, YYYY")}</span>
             <span>
-              {team.work_start_time || team.start_time} - {team.work_end_time || team.end_time}
+              {team.work_start_time} - {team.work_end_time}
             </span>
           </div>
 
@@ -651,7 +647,6 @@ const TeamsList: React.FC = () => {
             setTeams(teams.map((team) => (team.id === updatedTeam.id ? updatedTeam : team)))
             setIsUpdateModalOpen(false)
             setTeamToUpdate(null)
-            toast.success("Team updated successfully")
             fetchTeams() // Refresh the list
           }}
         />

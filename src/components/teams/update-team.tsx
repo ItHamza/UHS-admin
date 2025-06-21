@@ -27,8 +27,8 @@ interface Team {
   is_active?: boolean
 
   // API field names
-  start_time: string
-  end_time: string
+  work_start_time: string
+  work_end_time: string
   break_start_time?: string
   break_end_time?: string
   start_date: string
@@ -59,8 +59,8 @@ interface TeamData {
   user_ids: string[]
   service_ids: string[]
   start_date: string
-  start_time: string
-  end_time: string
+  work_start_time: string
+  work_end_time: string
   break_start_time?: string
   break_end_time?: string
   off_days: string[]
@@ -76,7 +76,7 @@ const TEAM_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ]
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose, onUpdate }) => {
   const [currentStep, setCurrentStep] = useState(1)
@@ -111,8 +111,8 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
     user_ids: team.members?.map((m: any) => m.id) || [],
     service_ids: team.services?.map((s: any) => s.id) || [],
     start_date: team.start_date || "",
-    start_time: team.start_time || "",
-    end_time: team.end_time || "",
+    work_start_time: team.work_start_time || "",
+    work_end_time: team.work_end_time || "",
     break_start_time: team.break_start_time,
     break_end_time: team.break_end_time,
     off_days: normalizeOffDays(team.off_days),
@@ -296,7 +296,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
       case 4:
         return dataLoaded
       case 5:
-        return teamData.start_date && teamData.start_time && teamData.end_time
+        return teamData.start_date && teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
       default:
         return false
     }
@@ -709,8 +709,8 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                     <input
                       id="workStart"
                       type="time"
-                      value={teamData.start_time}
-                      onChange={(e) => setTeamData((prev) => ({ ...prev, start_time: e.target.value }))}
+                      value={teamData.work_start_time}
+                      onChange={(e) => setTeamData((prev) => ({ ...prev, work_start_time: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -721,8 +721,8 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                     <input
                       id="workEnd"
                       type="time"
-                      value={teamData.end_time}
-                      onChange={(e) => setTeamData((prev) => ({ ...prev, end_time: e.target.value }))}
+                      value={teamData.work_end_time}
+                      onChange={(e) => setTeamData((prev) => ({ ...prev, work_end_time: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>

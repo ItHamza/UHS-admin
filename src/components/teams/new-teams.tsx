@@ -101,7 +101,7 @@ const TEAM_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ]
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 export default function TeamCreationModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -282,18 +282,21 @@ export default function TeamCreationModal() {
       const submitData = {
         ...teamData,
         start_date: teamData.start_date,
-        lat: teamData.lat || undefined,
-        lng: teamData.lng || undefined,
-        area_id: teamData.area_ids || undefined,
+        lat: teamData.lat || 25.3224,
+        lng: teamData.lng || 51.531,
+        area_ids: [areas[0].id],
         district_ids: teamData.district_ids || undefined,
-        property_id: teamData.property_ids || undefined,
-        residence_type_id: teamData.residence_type_ids || undefined,
+        property_ids: teamData.property_ids || undefined,
+        area_id: areas[0].id, // For Schedule Validation
+        district_id: teamData.district_ids[0] || districts[0].id, // For Schedule Validation
+        property_id: properties[0].id, // For Schedule Validation
+        residence_type_id: residenceTypes[0].id, // For Schedule Validation
         break_start_time: teamData.break_start_time || undefined,
         break_end_time: teamData.break_end_time || undefined,
       }
-
       const responseTeam = await CreateTeamAction(submitData)
       // setTeams([...teams, responseTeam]) // add team somewhere here
+      window.location.reload();
       toast.success("Team created successfully!")
       setIsOpen(false)
       resetModal()
@@ -705,7 +708,7 @@ export default function TeamCreationModal() {
 
         {/* Break Time */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Break Time (Optional)</label>
+          <label className="block text-sm font-medium text-gray-700">Break Time</label>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="breakStart" className="block text-sm font-medium text-gray-700 mb-1">
@@ -798,7 +801,7 @@ export default function TeamCreationModal() {
       case 4:
         return teamData.district_ids?.length > 0
       case 5:
-        return teamData.start_date && teamData.work_start_time && teamData.work_end_time
+        return teamData.start_date && teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
       default:
         return false
     }

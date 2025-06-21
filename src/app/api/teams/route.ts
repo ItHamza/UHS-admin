@@ -46,7 +46,10 @@ export async function POST(req: NextRequest) {
       area_ids,
       district_ids,
       property_ids,
-      residence_type_ids,
+      area_id,
+      district_id,
+      property_id,
+      residence_type_id,
     } = await req.json();
 
     if (
@@ -82,7 +85,10 @@ export async function POST(req: NextRequest) {
       area_ids,
       district_ids,
       property_ids,
-      residence_type_ids,
+      area_id,
+      district_id,
+      property_id,
+      residence_type_id,
     };
 
     const res = await fetch(`${BASE_URLV2}/teams`, {
