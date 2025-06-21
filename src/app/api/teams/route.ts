@@ -7,7 +7,7 @@ const BASE_URLV2 =
 
 export async function GET() {
   try {
-    const response = await fetch(`${BASE_URL}/teams`);
+    const response = await fetch(`${BASE_URLV2}/teams`);
     if (!response.ok) {
       throw new Error("Failed to fetch users");
     }
@@ -43,17 +43,16 @@ export async function POST(req: NextRequest) {
       break_start_time,
       break_end_time,
       off_days,
-      area_id,
-      district_id,
-      property_id,
-      residence_type_id,
+      area_ids,
+      district_ids,
+      property_ids,
+      residence_type_ids,
     } = await req.json();
 
     if (
       !name ||
       !team_type ||
       !user_ids?.length ||
-      !service_ids?.length ||
       !start_date ||
       !work_start_time ||
       !work_end_time
@@ -80,68 +79,103 @@ export async function POST(req: NextRequest) {
       break_start_time,
       break_end_time,
       off_days,
-      area_id,
-      district_id,
-      property_id,
-      residence_type_id,
+      area_ids,
+      district_ids,
+      property_ids,
+      residence_type_ids,
     };
-    const userRes = await fetch(`${BASE_URLV2}/teams`, {
+
+    const res = await fetch(`${BASE_URLV2}/teams`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const createRes = await userRes.json();
+
+    const result = await res.json();
+
     return NextResponse.json({
       success: true,
-      message: "team created successfully",
-      data: createRes.data,
+      message: "Team created successfully",
+      data: result.data,
     });
   } catch (error: any) {
-    console.error("Error creating team:", error);
+    console.error("POST error:", error);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
 
+
 export async function PUT(req: NextRequest) {
   try {
-    const { name, description, id } = await req.json();
+    const {
+      id,
+      name,
+      description,
+      team_type,
+      lat,
+      lng,
+      user_ids,
+      service_ids,
+      start_date,
+      work_start_time,
+      work_end_time,
+      break_start_time,
+      break_end_time,
+      off_days,
+      area_ids,
+      district_ids,
+      property_ids,
+      residence_type_ids,
+    } = await req.json();
 
-    if (!name || !description || !id) {
+    if (!id || !name || !user_ids?.length || !start_date || !work_start_time || !work_end_time) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Missing required fields in the request body",
-        },
+        { success: false, message: "Missing required fields" },
         { status: 400 }
       );
     }
+
     const data = {
+      id,
       name,
       description,
-      id,
+      team_type,
+      lat,
+      lng,
+      user_ids,
+      service_ids,
+      start_date,
+      work_start_time,
+      work_end_time,
+      break_start_time,
+      break_end_time,
+      off_days,
+      area_ids,
+      district_ids,
+      property_ids,
+      residence_type_ids,
     };
-    const userRes = await fetch(`${BASE_URL}/teams/${id}`, {
+    console.log(data)
+    const res = await fetch(`${BASE_URLV2}/teams/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const createRes = await userRes.json();
+
+    const result = await res.json();
+    console.log(result)
     return NextResponse.json({
       success: true,
-      message: "user created successfully",
-      data: createRes.data,
+      message: "Team updated successfully",
+      data: result.data,
     });
   } catch (error: any) {
-    console.error("Error rescheduling:", error);
+    console.error("PUT error:", error);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: error.message || "Internal server error" },
       { status: 500 }
     );
   }

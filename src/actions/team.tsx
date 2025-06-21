@@ -2,6 +2,7 @@
 import {
   createTeamDetails,
   createTeamMember,
+  deleteTeam,
   getTeams,
   updateTeamDetails,
 } from "@/lib/service/teams";
@@ -24,3 +25,8 @@ export async function CreateTeamMemberAction(data: any) {
   const teams = await createTeamMember(data);
   return teams.data;
 }
+export async function DeleteTeamAction(id: string) {
+  const res = await deleteTeam(id);
+  return res.data;
+}
+

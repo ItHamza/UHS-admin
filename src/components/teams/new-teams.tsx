@@ -13,6 +13,7 @@ import { fetchServices, fetchChildServices } from "@/lib/service/service"
 import { CreateTeamAction, CreateTeamMemberAction } from "@/actions/team"
 import { TeamMembersAction } from "@/actions/users"
 import { PlusCircleIcon } from "lucide-react"
+import TreeDistrictSelector from "./tree-selector"
 
 interface TeamMember {
   id: string
@@ -88,10 +89,10 @@ interface TeamData {
   break_start_time?: string
   break_end_time?: string
   off_days: string[]
-  area_id?: string
-  district_id?: string
-  property_id?: string
-  residence_type_id?: string
+  area_ids?: string[]
+  district_ids: string[]
+  property_ids?: string[]
+  residence_type_ids?: string[]
 }
 
 const TEAM_TYPES = [
@@ -130,10 +131,10 @@ export default function TeamCreationModal() {
     break_start_time: "",
     break_end_time: "",
     off_days: [],
-    area_id: "",
-    district_id: "",
-    property_id: "",
-    residence_type_id: "",
+    area_ids: [],
+    district_ids: [],
+    property_ids: [],
+    residence_type_ids: [],
   })
 
   const [showCreateMember, setShowCreateMember] = useState(false)
@@ -155,15 +156,6 @@ export default function TeamCreationModal() {
       if (subService) return subService.name
     }
     return "Unknown Service"
-  }
-
-  // Filter functions
-  const getFilteredDistricts = () => {
-    return teamData.area_id ? districts.filter((d) => d.areaId === teamData.area_id) : []
-  }
-
-  const getFilteredProperties = () => {
-    return teamData.district_id ? properties.filter((p) => p.districtId === teamData.district_id) : []
   }
 
   const getAllServices = () => {
@@ -273,10 +265,10 @@ export default function TeamCreationModal() {
       break_start_time: "",
       break_end_time: "",
       off_days: [],
-      area_id: "",
-      district_id: "",
-      property_id: "",
-      residence_type_id: "",
+      area_ids: [],
+      district_ids: [],
+      property_ids: [],
+      residence_type_ids: [],
     })
     setShowCreateMember(false)
     setNewMember({ id: "", name: "", email: "", phone: "", role: "team_member" })
@@ -292,10 +284,10 @@ export default function TeamCreationModal() {
         start_date: teamData.start_date,
         lat: teamData.lat || undefined,
         lng: teamData.lng || undefined,
-        area_id: teamData.area_id || undefined,
-        district_id: teamData.district_id || undefined,
-        property_id: teamData.property_id || undefined,
-        residence_type_id: teamData.residence_type_id || undefined,
+        area_id: teamData.area_ids || undefined,
+        district_ids: teamData.district_ids || undefined,
+        property_id: teamData.property_ids || undefined,
+        residence_type_id: teamData.residence_type_ids || undefined,
         break_start_time: teamData.break_start_time || undefined,
         break_end_time: teamData.break_end_time || undefined,
       }
@@ -637,99 +629,24 @@ export default function TeamCreationModal() {
       <div className="text-center">
         <MapPinIcon className="mx-auto h-12 w-12 text-blue-600 mb-4" />
         <h3 className="text-lg font-semibold mb-2">Assign Location</h3>
-        <p className="text-sm text-gray-600">Set the area, district, property, and residence type for this team</p>
+        <p className="text-sm text-gray-600">Set the area, district for this team</p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="area" className="block text-sm font-medium text-gray-700 mb-1">
-            Area (Optional)
-          </label>
-          <select
-            id="area"
-            value={teamData.area_id || ""}
-            onChange={(e) =>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Districts *</label>
+          <TreeDistrictSelector
+            areas={areas}
+            districts={districts}
+            selectedDistricts={new Set(teamData.district_ids)}
+            setSelectedDistricts={(districts) =>
               setTeamData((prev) => ({
                 ...prev,
-                area_id: e.target.value || undefined,
-                district_id: "", // Reset dependent fields
-                property_id: "",
+                district_ids: Array.from(districts),
+                property_id: "", // Reset property when districts change
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select an area</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-1">
-            District (Optional)
-          </label>
-          <select
-            id="district"
-            value={teamData.district_id || ""}
-            onChange={(e) =>
-              setTeamData((prev) => ({
-                ...prev,
-                district_id: e.target.value || undefined,
-                property_id: "", // Reset dependent field
-              }))
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={!teamData.area_id}
-          >
-            <option value="">Select a district</option>
-            {getFilteredDistricts().map((district) => (
-              <option key={district.id} value={district.id}>
-                {district.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="property" className="block text-sm font-medium text-gray-700 mb-1">
-            Property (Optional)
-          </label>
-          <select
-            id="property"
-            value={teamData.property_id || ""}
-            onChange={(e) => setTeamData((prev) => ({ ...prev, property_id: e.target.value || undefined }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={!teamData.district_id}
-          >
-            <option value="">Select a property</option>
-            {getFilteredProperties().map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name} - {property.address}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="residenceType" className="block text-sm font-medium text-gray-700 mb-1">
-            Residence Type (Optional)
-          </label>
-          <select
-            id="residenceType"
-            value={teamData.residence_type_id || ""}
-            onChange={(e) => setTeamData((prev) => ({ ...prev, residence_type_id: e.target.value || undefined }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select a residence type</option>
-            {residenceTypes.map((residenceType) => (
-              <option key={residenceType.id} value={residenceType.id}>
-                {residenceType.type}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
     </div>
@@ -879,7 +796,7 @@ export default function TeamCreationModal() {
       case 3:
         return teamData.service_ids.length > 0
       case 4:
-        return true // All location fields are optional
+        return teamData.district_ids?.length > 0
       case 5:
         return teamData.start_date && teamData.work_start_time && teamData.work_end_time
       default:

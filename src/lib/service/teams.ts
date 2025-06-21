@@ -41,3 +41,9 @@ export const createTeamMember = async (data: any) => {
     body: JSON.stringify(data),
   });
 };
+
+export async function deleteTeam(id: string) {
+  return apiRequest<any>(`/teams/${id}`, {
+    method: "DELETE",
+  });
+}
