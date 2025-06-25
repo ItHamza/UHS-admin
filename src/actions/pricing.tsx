@@ -1,5 +1,5 @@
 "use server";
-import { createPricing, deletePricing, getPricings, updatePricing } from "@/lib/service/pricing";
+import { createPricing, createSpecialPricing, deletePricing, deleteSpecialPricing, fetchSpecialServicePricing, getPricings, updatePricing, updateSpecialPricing } from "@/lib/service/pricing";
 
 export default async function PricingAction() {
   const pricings = await getPricings();
@@ -19,4 +19,25 @@ export async function PricingUpdateAction(pricing: any) {
 export async function PricingDeleteAction(id: string) {
   const res = await deletePricing(id);
   return res.data;
+}
+
+export async function SpecialPricingAction() {
+  const specpricings = await fetchSpecialServicePricing();
+  return specpricings.data;
+}
+
+
+export async function SpecialPricingCreateAction(pricing: any) {
+  const specpricings = await createSpecialPricing(pricing);
+  return specpricings.data;
+}
+
+export async function SpecialPricingUpdateAction(pricing: any) {
+  const specpricings = await updateSpecialPricing(pricing);
+  return specpricings.data;
+}
+
+export async function SpecialPricingDeleteAction(id: string) {
+  const res = await deleteSpecialPricing(id);
+  return res;
 }
