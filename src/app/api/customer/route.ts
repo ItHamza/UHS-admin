@@ -30,7 +30,7 @@ function getAddress(user: any) {
 
 export async function GET() {
   try {
-    const response = await fetch(`${BASE_URL}/users`);
+    const response = await fetch(`${BASE_URL}/users?role=user`);
     if (!response.ok) {
       throw new Error("Failed to fetch users");
     }

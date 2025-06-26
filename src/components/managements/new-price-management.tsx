@@ -175,6 +175,7 @@ export default function PricingManagementRedesigned() {
   // Form state
   const [pricingForm, setPricingForm] = useState({
     id: "",
+    parent_id: "",
     service_id: "",
     residence_type_id: "",
     frequency: "",
@@ -371,6 +372,7 @@ export default function PricingManagementRedesigned() {
   const resetForms = () => {
     setPricingForm({
       id: "",
+      parent_id: "",
       service_id: "",
       residence_type_id: "",
       frequency: "",
@@ -383,7 +385,7 @@ export default function PricingManagementRedesigned() {
     })
     setSpecialPricingForm({
       id: "",
-      service_id: "",
+      service_id: specialPricingRules[0].service_id,
       name: "",
       category: "sofa",
       sub_category: "",
@@ -586,6 +588,7 @@ export default function PricingManagementRedesigned() {
     setEditingPricing(pricing)
     setPricingForm({
       id: pricing.id,
+      parent_id: pricing.service.parent_id ?? "",
       service_id: pricing.service_id,
       residence_type_id: pricing.residence_type_id,
       frequency: pricing.frequency,
@@ -622,8 +625,11 @@ export default function PricingManagementRedesigned() {
 
     // Fetch sub-services for the parent service
     const parentService = parentServices?.find((p) => p.subServices?.some((sub) => sub.id === pricing.service.parent_id))
-    if (parentService) {
-      fetchSubServices(parentService.id)
+    const subService = parentService?.subServices?.find(
+      (sub) => sub.id === pricing.service.parent_id
+    );
+    if (subService) {
+      fetchSubServices(subService.id)
     }
 
     setIsSpecialPricingModalOpen(true)
@@ -1015,15 +1021,16 @@ export default function PricingManagementRedesigned() {
                 <div className="bg-white rounded-lg overflow-hidden">
                   <div className="px-4 md:px-6 py-4 border-b flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Pricing Rules</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">Specialize Pricing Rules</h2>
                       <p className="text-sm text-gray-600">
-                        Manage pricing for services across different residence types and frequencies
+                        Manage pricing for specialize services
                       </p>
                     </div>
                     <button
                       onClick={() => {
                         resetForms()
                         setIsSpecialPricingModalOpen(true)
+                        fetchSubServices(specialPricingRules[0].service.parent_id ?? specialPricingRules[0].service_id)
                       }}
                       className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
@@ -1320,14 +1327,12 @@ export default function PricingManagementRedesigned() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Parent Service</label>
                       <select
-                        value={
-                          parentServices?.find((p) => p.subServices?.some((sub) => sub.id === pricingForm.service_id))?.id || ""
-                        }
+                        value={pricingForm.parent_id}
                         onChange={(e) => {
                           const parentId = e.target.value;
                           if (parentId) {
                             fetchSubServices(parentId);
-                            setPricingForm((prev) => ({ ...prev, service_id: "" }));
+                            setPricingForm((prev) => ({ ...prev, parent_id: parentId, service_id: "" }));
                           }
                         }}
                         className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
@@ -1553,46 +1558,18 @@ export default function PricingManagementRedesigned() {
                   </Dialog.Title>
 
                   <div className="space-y-4">
-                    {/* Parent Service Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Parent Service</label>
-                      <select
-                        value={
-                          parentServices?.find((p) => p.subServices?.some((sub) => sub.id === specialPricingForm.parent_id))?.id || ""
-                        }
-                        onChange={(e) => {
-                          const parentId = e.target.value;
-                          if (parentId) {
-                            fetchSubServices(parentId);
-                            setSpecialPricingForm((prev) => ({ ...prev, service_id: "" }));
-                          }
-                        }}
-                        className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
-                      >
-                        <option value="">Select parent service</option>
-                        {parentServices.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name}
-                          </option>
-                        ))}
-                      </select>
-
-                    </div>
-
                     {/* Sub Service Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Sub Service</label>
                       <select
-                        value={specialPricingForm.parent_id}
+                        value={specialPricingForm.service_id}
                         onChange={(e) => setSpecialPricingForm((prev) => ({ ...prev, service_id: e.target.value }))}
                         disabled={subServices.length === 0}
-                        className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition disabled:bg-gray-100"
+                        className="w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition"
                       >
                         <option value="">
                           {loadingSubServices
                             ? "Loading..."
-                            : subServices.length === 0
-                            ? "Select parent service first"
                             : "Select sub service"}
                         </option>
                         {subServices.map((service) => (

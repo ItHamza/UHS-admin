@@ -130,11 +130,11 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             <div className='bg-gray-50 p-4 rounded-lg'>
               <div className='flex items-center mb-3'>
                 <UsersIcon className='mr-2 h-6 w-6 text-gray-600' />
-                <h4 className='text-md font-medium'>{booking.team.name}</h4>
+                <h4 className='text-md font-medium'>{booking.team?.name}</h4>
               </div>
-              {booking.team.Users && (
+              {booking.team?.Users && (
                 <ul className='divide-y divide-gray-200'>
-                  {booking.team.Users.map((member: any, index: number) => (
+                  {booking.team?.Users.map((member: any, index: number) => (
                     <li key={index} className='py-2 flex items-center'>
                       <div className='bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center mr-3'>
                         <span className='text-gray-600 font-medium text-sm'>
@@ -201,7 +201,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             </div>
           </div>
           <div className='mt-6 flex gap-4 '>
-            {booking.status === "pending" && (
+            {booking.status === "scheduled" && (
               <>
                 <button className='flex-1 h-10  bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
                   Edit Booking
@@ -211,7 +211,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
                 </button>
               </>
             )}
-            {booking.status === "in_progress" && (
+            {booking.status === "active" && (
               <>
                 <button
                   onClick={() => setIsRenewModalOpen(true)}

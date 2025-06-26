@@ -18,8 +18,9 @@ const BookingFilter: React.FC<BookingFilterProps> = ({
         value={currentFilter}
         onChange={(e) => onFilterChange(e.target.value)}>
         <option value='all'>All Statuses</option>
-        <option value='pending'>Pending</option>
-        <option value='in_progress'>In Progress</option>
+        <option value='active'>Active</option>
+        <option value='scheduled'>Scheduled</option>
+        <option value='upcoming'>Upcoming</option>
         <option value='completed'>Completed</option>
         <option value='cancelled'>Cancelled</option>
       </select>
