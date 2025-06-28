@@ -110,7 +110,14 @@ const OneTimeServicesAssignment: React.FC = () => {
                             );
         duration_value = service_type.duration_value
       } else {
-        duration_value = booking.serviceMinutes
+        const subServices = booking.bookingItems
+                .map(item => {
+                  const quantity = item.quantity;
+                  const duration = item.subServiceItem?.time_duration_in_minutes;
+                  return quantity && duration ? [quantity, duration] : null;
+                })
+                .filter(Boolean) as [number, number][];
+        duration_value = subServices.reduce((sum, [quantity, duration]) => sum + quantity * duration, 0);
       }
       
       

@@ -113,6 +113,38 @@ export interface Property {
   latitude: number
   longitude: number
 }
+
+export interface SubServiceItem {
+  id: string
+  service_id: string
+  name: string
+  category: SpecialPricingCategory
+  sub_category: string
+  photo: string
+  price_per_unit: string
+  currency: string
+  description: string
+  is_active: boolean
+  time_duration_in_minutes: number
+  createdAt: string
+  updatedAt: string
+  service: Service
+}
+
+export interface BookingItem {
+  booking_id: string
+  createdAt: string
+  currency: string
+  id: string 
+  quantity: number
+  special_notes: string 
+  subServiceItem: SubServiceItem
+  sub_service_item_id: string
+  total_price: string 
+  unit_price: string
+  updatedAt: string
+}
+
 export interface PropBooking {
   id: string
   appartment_number: string
@@ -159,4 +191,5 @@ export interface PropBooking {
   user: User
   user_available_in_apartment: boolean
   user_id: string
+  bookingItems: BookingItem[]
 }

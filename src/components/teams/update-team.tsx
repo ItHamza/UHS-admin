@@ -680,21 +680,30 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
           </div>
         )
       case 5:
+        const isScheduleUpdateAllowed = team.service_count != 0;
         return (
           <div className="space-y-6">
             <div className="text-center">
               <Clock className="mx-auto h-12 w-12 text-blue-600 mb-4" />
               <h3 className="text-lg font-semibold mb-2">Update Schedule</h3>
-              <p className="text-sm text-gray-600">Update working hours and schedule</p>
+              <p className={`text-sm  ${isScheduleUpdateAllowed ? 'text-gray-600' : 'text-red-600'}`}>
+                {isScheduleUpdateAllowed
+                  ? "Update working hours and schedule"
+                  : "You cannot update the schedule while services are assigned to this team."}
+              </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 opacity-100 md:opacity-100">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Starting Date</label>
                 <input
                   type="date"
                   value={teamData.start_date}
-                  onChange={(e) => setTeamData((prev) => ({ ...prev, start_date: e.target.value }))}
+                  onChange={(e) =>
+                    isScheduleUpdateAllowed &&
+                    setTeamData((prev) => ({ ...prev, start_date: e.target.value }))
+                  }
+                  disabled={!isScheduleUpdateAllowed}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -703,26 +712,28 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                 <label className="block text-sm font-medium text-gray-700">Working Hours</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="workStart" className="block text-sm font-medium text-gray-700 mb-1">
-                      Start Time
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
                     <input
-                      id="workStart"
                       type="time"
                       value={teamData.work_start_time}
-                      onChange={(e) => setTeamData((prev) => ({ ...prev, work_start_time: e.target.value }))}
+                      onChange={(e) =>
+                        isScheduleUpdateAllowed &&
+                        setTeamData((prev) => ({ ...prev, work_start_time: e.target.value }))
+                      }
+                      disabled={!isScheduleUpdateAllowed}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label htmlFor="workEnd" className="block text-sm font-medium text-gray-700 mb-1">
-                      End Time
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
                     <input
-                      id="workEnd"
                       type="time"
                       value={teamData.work_end_time}
-                      onChange={(e) => setTeamData((prev) => ({ ...prev, work_end_time: e.target.value }))}
+                      onChange={(e) =>
+                        isScheduleUpdateAllowed &&
+                        setTeamData((prev) => ({ ...prev, work_end_time: e.target.value }))
+                      }
+                      disabled={!isScheduleUpdateAllowed}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -737,8 +748,10 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                       type="time"
                       value={teamData.break_start_time || ""}
                       onChange={(e) =>
+                        isScheduleUpdateAllowed &&
                         setTeamData((prev) => ({ ...prev, break_start_time: e.target.value || undefined }))
                       }
+                      disabled={!isScheduleUpdateAllowed}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -747,8 +760,10 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                       type="time"
                       value={teamData.break_end_time || ""}
                       onChange={(e) =>
+                        isScheduleUpdateAllowed &&
                         setTeamData((prev) => ({ ...prev, break_end_time: e.target.value || undefined }))
                       }
+                      disabled={!isScheduleUpdateAllowed}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -764,7 +779,8 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                         id={day}
                         type="checkbox"
                         checked={teamData.off_days.includes(day)}
-                        onChange={() => handleDayOffToggle(day)}
+                        onChange={() => isScheduleUpdateAllowed && handleDayOffToggle(day)}
+                        disabled={!isScheduleUpdateAllowed}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <label htmlFor={day} className="text-sm text-gray-700">

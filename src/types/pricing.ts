@@ -44,6 +44,7 @@ interface SpecialPricingRule{
   currency: string
   description: string
   is_active: boolean
+  time_duration_in_minutes: number
   createdAt: string
   updatedAt: string
   service: Service
