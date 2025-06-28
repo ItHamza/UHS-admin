@@ -89,8 +89,8 @@ const OneTimeServicesAssignment: React.FC = () => {
     startTransition(async () => {
       try {
         const data = await BookingAction();
-        console.log("bookingdata", data);
-        setBookings(data);
+        const filteredBooking = data.filter((b: any) => b.service.name === "Deep Cleaning" || b.service.name === "Residential Cleaning")
+        setBookings(filteredBooking);
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
       }
@@ -213,23 +213,29 @@ const OneTimeServicesAssignment: React.FC = () => {
               <div className="p-4 border-b">
                 <h2 className="text-lg font-semibold">Pending Assignments</h2>
                 <p className="text-sm text-gray-500">
-                  {bookings.filter((b) => b.status === "scheduled").length} bookings
+                  {bookings.length} bookings
                 </p>
               </div>
-              <div className="divide-y max-h-96 overflow-y-auto">
-                {bookings
-                  .filter((b) => b.service.name === "Deep Cleaning" || b.service.name === "Deep Cleaning")
-                  .map((booking) => (
+              <div className="divide-y max-h-150 overflow-y-auto">
+                {bookings.map((booking) => {
+                  const isAssigned = !!booking.team_id;
+                  const isSelected = selectedBooking?.id === booking.id;
+
+                  return (
                     <div
                       key={booking.id}
                       className={`p-4 cursor-pointer hover:bg-gray-50 ${
-                        selectedBooking?.id === booking.id ? "bg-blue-50 border-l-4 border-blue-500" : ""
-                      }`}
-                      onClick={() => handleBookingSelect(booking)}
+                        isSelected ? "bg-blue-50 border-l-4 border-blue-500" : ""
+                      } ${isAssigned ? "opacity-60 pointer-events-none" : ""}`} // disable interaction
+                      onClick={() => {
+                        if (!isAssigned) handleBookingSelect(booking);
+                      }}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-medium text-sm">{booking.booking_number}</span>
-                        <span className="text-xs text-gray-500">{moment(booking.createdAt).format("DD MMM YYYY")}</span>
+                        <span className="text-xs text-gray-500">
+                          {moment(booking.createdAt).format("DD MMM YYYY")}
+                        </span>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center text-sm">
@@ -244,15 +250,24 @@ const OneTimeServicesAssignment: React.FC = () => {
                           <MapPin className="w-4 h-4 mr-2 text-gray-400" />
                           <span>{booking.property.name}</span>
                         </div>
-                        {booking.date && (
-                          <div className="flex items-center text-sm text-blue-600">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            <span>Preferred: {formatDate(booking.date)}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between items-start mb-2">
+                          {booking.date && (
+                            <div className="flex items-center text-sm text-blue-600">
+                              <Calendar className="w-4 h-4 mr-2" />
+                              <span>Preferred: {formatDate(booking.date)}</span>
+                            </div>
+                          )}
+                          {isAssigned && (
+                            <div className="text-xs text-red-500 font-semibold">
+                              Assigned
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
+
               </div>
             </div>
           </div>
@@ -291,7 +306,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <h4 className="font-medium text-gray-900 mb-2">Location</h4>
                       <div className="text-sm text-gray-600">
                         <div>
@@ -299,6 +314,15 @@ const OneTimeServicesAssignment: React.FC = () => {
                         </div>
                         <div>
                           {selectedBooking.property.name}, {selectedBooking.district.name}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Requested Date</h4>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex items-center">
+                          <Home className="w-4 h-4 mr-2 text-gray-400" />
+                          <span>{selectedBooking.date}</span>
                         </div>
                       </div>
                     </div>
@@ -396,8 +420,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                                             key={idx}
                                             onClick={() => handleSlotSelect(team, day.date, slot)}
                                             className={`w-full text-left p-2 text-sm rounded border ${
-                                              selectedSlot?.time_slot.schedule_id === slot.schedule_id &&
-                                              selectedSlot?.date === day.date
+                                              selectedSlot?.time_slot === slot
                                                 ? "bg-blue-100 border-blue-300"
                                                 : "hover:bg-gray-50 border-gray-200"
                                             }`}

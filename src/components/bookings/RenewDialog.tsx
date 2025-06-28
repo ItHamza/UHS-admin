@@ -146,7 +146,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
         if (bundle.bundleId === bundleId) {
           setSelectedTeamId(team.teamId);
 
-          bundle.days.forEach((day: any) => {
+          bundle.bookingDays.forEach((day: any) => {
             filteredTimeSlots.push({
               day: day.day,
               date: day.date,
@@ -217,10 +217,10 @@ const RenewModal: React.FC<RenewModalProps> = ({
     setTimeSlotsSelected(selectedSlotsList);
   };
 
-  const fetchCalendar = async (startDate: string, endDate: string) => {
+  const fetchCalendar = async (startDate: string, endDate: string, booking_id: string, team_id: string, user_id: string) => {
     try {
       setLoading((prev) => ({ ...prev, calendar: true }));
-      const response = await CalendarAction(startDate, endDate);
+      const response = await CalendarAction(startDate, endDate, booking_id, team_id, user_id);
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable)
         .map(([dateString]) => new Date(dateString));
@@ -274,7 +274,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
                 const endTime = slotInfo.split("_")[1].split("-")[1];
 
                 const scheduleId = slotInfo.split("_")[0];
-                const matchingTimeSlots = av.days
+                const matchingTimeSlots = av.bookingDays
                   .filter((d: any) => d.day === day)
                   ?.flatMap((d: any) => d.timeSlots)
                   .filter(
@@ -400,7 +400,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
         .format("YYYY-MM-DD");
       fetchCalendar(
         moment(bookingData.end_date).add(1, "days").format("YYYY-MM-DD"),
-        endDate
+        endDate, bookingData.id, bookingData.team_id, bookingData.user.id
       );
     }
   }, [months]);

@@ -32,6 +32,15 @@ async function fetchTeamAvailabilities(body: any) {
   }
 }
 
+async function fetchAllTeamAvailabilities() {
+  const response = await fetch(`${BASE_URL}/team-availability`);
+  if (!response.ok) {
+    return null;
+  }
+  const data = await response.json();
+  return data || [];
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Parse the request body
@@ -58,6 +67,24 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error blocking time slots:", error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET() {
+  try {
+    const bookingServices = await fetchAllTeamAvailabilities();
+
+    return NextResponse.json({
+      success: true,
+      message: "Booking Services fetched successfully",
+      data: bookingServices,
+    });
+  } catch (error: any) {
+    console.error("Error fetching Booking Services:", error);
     return NextResponse.json(
       { success: false, message: error.message },
       { status: 500 }

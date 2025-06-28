@@ -4,19 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-async function fetchRescheduleTimeslots(
-  teamId: string,
-  date: string,
-  minutes: number
-) {
-  const response = await fetch(
-    `${BASE_URL}/schedules/team-date?date=${date}&minutes=${minutes}&teamId=${teamId}`
-  );
+async function fetchRescheduleTimeslots(data: any) {
+  const response = await fetch(`${BASE_URL}/schedules/team-date`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch reschedule timeslots");
   }
-  const data = await response.json();
-  return data || [];
+  const teamRes = await response.json();
+  return teamRes || [];
 }
 
 export async function POST(req: NextRequest) {
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const timeslots = await fetchRescheduleTimeslots(teamId, date, minutes);
+    const data = { teamId, date, minutes };
+    const timeslots = await fetchRescheduleTimeslots(data);
 
     return NextResponse.json({
       success: true,

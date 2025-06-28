@@ -159,9 +159,12 @@ export default function RosterList() {
     // Sort by team and then by time
     filtered.sort((a, b) => {
       if (a.team_no !== b.team_no) {
-        return a.team_no.localeCompare(b.team_no)
+        return a.team_no.localeCompare(b.team_no);
       }
-      return a.timeFrom.localeCompare(b.timeFrom)
+      const dateTimeA = new Date(`${a.date} ${a.timeFrom}`);
+      const dateTimeB = new Date(`${b.date} ${b.timeFrom}`);
+
+      return dateTimeA.getTime() - dateTimeB.getTime();
     })
 
     // Calculate location status for each booking

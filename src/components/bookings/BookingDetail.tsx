@@ -59,7 +59,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
                   <h4 className='text-md font-medium'>{booking.customer}</h4>
                   <span
                     className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-600`}>
-                    {booking.service.name.replace("_", " ")}
+                    {booking.service?.name?.replace("_", " ")}
                   </span>
                 </div>
               </div>
@@ -70,17 +70,17 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
                     <span className='font-medium'>
                       Apt {booking.appartment_number},{" "}
                     </span>
-                    <span>{booking.residence_type.type}</span>
+                    <span>{booking.residence_type?.type}</span>
                   </div>
                 </div>
                 <div className='flex items-center text-gray-700'>
                   <BuildingIcon className='mr-2 h-5 w-5 text-gray-500' />
-                  <span>{booking.property.name}</span>
+                  <span>{booking.property?.name}</span>
                 </div>
                 <div className='flex items-center text-gray-700'>
                   <LayoutGridIcon className='mr-2 h-5 w-5 text-gray-500' />
                   <span>
-                    {booking.district.name}, {booking.area.name}
+                    {booking.district?.name}, {booking.area?.name}
                   </span>
                 </div>
               </div>
@@ -95,7 +95,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
               <div className='grid grid-cols-2 gap-4 mb-4'>
                 <div>
                   <p className='text-sm text-gray-500'>Service Type</p>
-                  <p className='font-medium'>{booking.service.name}</p>
+                  <p className='font-medium'>{booking.service?.name}</p>
                 </div>
               </div>
               <div className='grid grid-cols-2 gap-4'>
@@ -170,7 +170,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
               Service Schedule
             </h3>
             <div className='bg-gray-50 p-4 rounded-lg'>
-              {booking.services.length > 0 ? (
+              {Array.isArray(booking?.services) && booking.services.length > 0 ? (
                 <div className='divide-y divide-gray-200'>
                   {booking.services.map((service: any, index: number) => (
                     <div key={index} className='py-3 grid grid-cols-3 gap-4'>
@@ -201,17 +201,8 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
             </div>
           </div>
           <div className='mt-6 flex gap-4 '>
-            {booking.status === "scheduled" && (
-              <>
-                <button className='flex-1 h-10  bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
-                  Edit Booking
-                </button>
-                <button className='flex-1 h-10  bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
-                  Start Service
-                </button>
-              </>
-            )}
-            {booking.status === "active" && (
+      
+            {(booking.status === "active" || booking.status == 'scheduled' || booking.status == 'upcoming') && (
               <>
                 <button
                   onClick={() => setIsRenewModalOpen(true)}

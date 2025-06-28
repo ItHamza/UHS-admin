@@ -5,10 +5,16 @@ const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
 // Function to block time slots
-async function fetchCalendar(startDate: string, endDate: string) {
+async function fetchCalendar(startDate: string, endDate: string, bookingId: string, teamId: string, user_id: string) {
   try {
     const response = await fetch(
-      `${BASE_URL}/schedules/calendar/availability?start_date=${startDate}&end_date=${endDate}`
+      `${BASE_URL}/schedules/calendar/availability?start_date=${startDate}&end_date=${endDate}
+        &booking_id=${bookingId}&team_id=${teamId}&userId=${user_id}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     const responseText = await response.text();
@@ -44,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Block the time slots
-    const result = await fetchCalendar(body.startDate, body.endDate);
+    const result = await fetchCalendar(body.startDate, body.endDate, body.booking_id, body.team_id, body.user_id);
 
     return NextResponse.json({
       success: true,

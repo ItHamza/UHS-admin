@@ -228,10 +228,10 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const fetchCalendar = async (startDate: string, endDate: string) => {
+  const fetchCalendar = async (startDate: string, endDate: string, booking_id: string, team_id: string, user_id: string) => {
     try {
       setIsLoading(true);
-      const response = await CalendarAction(startDate, endDate);
+      const response = await CalendarAction(startDate, endDate, booking_id, team_id, user_id);
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable)
         .map(([dateString]) => new Date(dateString));
@@ -431,7 +431,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
             teamId: team.teamId,
           }));
 
-          bundle.days.forEach((day: any) => {
+          bundle.bookingDays.forEach((day: any) => {
             filteredTimeSlots.push({
               day: day.day,
               date: day.date,
@@ -606,7 +606,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                 const endTime = slotInfo.split("_")[1].split("-")[1];
 
                 const scheduleId = slotInfo.split("_")[0];
-                const matchingTimeSlots = av.days
+                const matchingTimeSlots = av.bookingDays
                   .filter((d: any) => d.day === day)
                   ?.flatMap((d: any) => d.timeSlots)
                   .filter(
@@ -722,7 +722,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         const endDate = moment()
           .add(parseInt(bookingData.duration), "months")
           .format("YYYY-MM-DD");
-        fetchCalendar(moment().format("YYYY-MM-DD"), endDate);
+        // fetchCalendar(moment().format("YYYY-MM-DD"), endDate, bookingData.id, bookingData.teamId, bookingData.user_id);
       }
     }
   }, [bookingData.frequency, bookingData.duration]);

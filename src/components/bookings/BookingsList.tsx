@@ -41,8 +41,8 @@ const BookingsList: React.FC = () => {
 
   const filteredBookings =
     filterStatus === "all"
-      ? bookings
-      : bookings.filter((booking) => booking.status === filterStatus);
+      ? bookings.filter((booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning")
+      : bookings.filter((booking) => (booking.status === filterStatus) && (booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning"));
 
   const getStatusColor = (status: string) => {
     const statusColors = {
@@ -168,7 +168,7 @@ const BookingsList: React.FC = () => {
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>
                         <div className='text-sm text-gray-900'>
-                          {booking.team.name}
+                          {booking.team?.name}
                         </div>
                       </td>
                       <td className='px-6 py-4 whitespace-nowrap'>

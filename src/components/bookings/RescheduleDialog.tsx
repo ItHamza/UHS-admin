@@ -22,6 +22,72 @@ interface Service {
   name: string;
 }
 
+interface Area {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+}
+
+interface District {
+  id: string
+  name: string
+  areaId: string
+  latitude: number
+  longitude: number
+}
+
+interface Property {
+  id: string
+  name: string
+  districtId: string
+  latitude: number
+  longitude: number
+}
+
+interface ResidenceType {
+  id: string
+  type: string
+}
+
+interface Team {
+  id: string
+  name: string
+  description: string
+  team_number: string
+  off_days: string[]
+}
+
+interface UpdatedService {
+  id: string
+  area: Area
+  district: District
+  property: Property
+  residenceType: ResidenceType
+  apartment_number: string,
+  area_id: string
+  createdAt: string
+  date: string
+  district_id: string
+  end_time: string
+  is_available: boolean
+  is_blocked: boolean
+  is_booked: boolean
+  is_cancelled: boolean
+  is_completed: boolean
+  is_rescheduled: boolean
+  previous_date: boolean
+  property_id: string
+  residence_type_id: string
+  schedule: string[],
+  schedule_id: string[],
+  start_time: string
+  status: "cancelled" | "completed" | "rescheduled" | "upcoming" | "scheduled"
+  team: Team
+  team_id: string
+  updatedAt: string
+}
+
 interface TeamAvailability {
   id: string;
   date: string;
@@ -91,8 +157,7 @@ const ReschedulePackageModal: React.FC<{
     const fetchServicesAndAvailabilities = async () => {
       try {
         setLoading(true);
-
-        setServices(pkg.services);
+        setServices(pkg.services.data);
         setTeamAvailabilities(pkg.services);
       } catch (error) {
         console.error("Error fetching services and availabilities:", error);
@@ -131,10 +196,10 @@ const ReschedulePackageModal: React.FC<{
         );
 
         // Transform the response into time slots format
-        const slots = response.map((slot: any) => ({
-          id: `${slot.id}_${slot.start_time}-${slot.end_time}`,
-          time: `${formatTime(slot.start_time)} - ${formatTime(slot.end_time)}`,
-          available: slot.is_available,
+        const slots = response.availableSlots.map((slot: any) => ({
+          id: `${slot.id}_${slot.startTime}-${slot.endTime}`,
+          time: `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
+          available: true,
         }));
 
         setAvailableTimeSlots(slots);
@@ -213,7 +278,8 @@ const ReschedulePackageModal: React.FC<{
         selectedAvailability.id,
         scheduleId,
         startTime,
-        endTime
+        endTime,
+        pkg.team_availability_ids
       );
       toast.success("Reschedule successfully");
       setDisableConfirm(false);
@@ -384,7 +450,8 @@ const ReschedulePackageModal: React.FC<{
       setLoading(true);
       const response = await CalendarAction(
         selectedAvailability?.date as string,
-        pkg.end_date
+        pkg.end_date, pkg.id, pkg.team_id,
+        pkg.user_id
       );
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable) // Filter out unavailable dates
@@ -528,7 +595,7 @@ const ReschedulePackageModal: React.FC<{
                     handleTimeSlotSelect(slot.id);
                   }
                 }}>
-                {formatTime(slot.time)}
+                {slot.time}
               </div>
             ))}
           </div>

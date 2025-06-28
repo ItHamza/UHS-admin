@@ -355,10 +355,7 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                 <h3 className="font-semibold text-blue-900 mb-3">Location Summary</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-blue-600">{stats.totalAreas}</div>
-                    <div className="text-xs text-blue-700">Areas</div>
-                  </div>
+                  
                   <div className="text-center">
                     <div className="text-lg font-bold text-green-600">{stats.totalDistricts}</div>
                     <div className="text-xs text-green-700">Districts</div>
@@ -375,33 +372,6 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
               </div>
             )}
 
-            {/* Areas */}
-            {team.areas && team.areas.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <Building className="h-5 w-5 mr-2" />
-                  Areas ({team.areas.length})
-                </h3>
-                <div className="space-y-2">
-                  {team.areas.map((area: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex items-center p-3 bg-white rounded-lg border hover:shadow-sm transition-shadow"
-                    >
-                      <MapPin className="h-4 w-4 text-green-500 mr-3" />
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{area.name}</p>
-                        {area.latitude && area.longitude && (
-                          <p className="text-sm text-gray-500">
-                            📍 {area.latitude}, {area.longitude}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Districts */}
             {team.districts && team.districts.length > 0 && (
