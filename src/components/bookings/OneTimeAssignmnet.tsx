@@ -244,7 +244,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <Home className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{booking.service.name}</span>
+                          <span>{booking.service.name === 'Residential Cleaning' ? 'Specialised Cleaning' : booking.service.name }</span>
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <MapPin className="w-4 h-4 mr-2 text-gray-400" />
@@ -482,7 +482,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                                     key={idx}
                                     onClick={() => handleSlotSelect(team, selectedDate, slot)}
                                     className={`p-3 text-left rounded border ${
-                                      selectedSlot?.time_slot.schedule_id === slot.schedule_id &&
+                                      selectedSlot?.time_slot === slot &&
                                       selectedSlot?.date === selectedDate
                                         ? "bg-blue-100 border-blue-300"
                                         : "hover:bg-gray-50 border-gray-200"
