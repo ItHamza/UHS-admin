@@ -9,6 +9,7 @@ import { PropBooking } from "@/types/booking";
 import moment from "moment"
 import { AssignTeamSlotAction, OneTimeServiceTeamAvailabilityAction } from "@/actions/team-availability"
 import toast from "react-hot-toast"
+import PricingAction, { SpecialPricingAction } from "@/actions/pricing"
 
 // Types based on your API response
 interface TimeSlot {
@@ -100,10 +101,25 @@ const OneTimeServicesAssignment: React.FC = () => {
   const fetchTeamAvailability = async (booking: PropBooking) => {
     setLoading(true)
     try {
+      var duration_value = booking.serviceMinutes
+      if (booking.service.name === "Deep Cleaning") {
+        const pricingResponse = await PricingAction()
+        const service_type = pricingResponse.find((p: PricingRule) =>
+                              p.frequency === booking.frequency &&
+                              p.residenceType.type === booking.residence_type.type
+                            );
+        duration_value = service_type.duration_value
+      } else {
+        duration_value = booking.serviceMinutes
+      }
+      
+      
+      const updatedBoooking = {...booking, serviceMinutes: duration_value}
+      setSelectedBooking(updatedBoooking)
       const data = {
         district_id: booking.district_id,
         start_date: booking.date,
-        duration: booking.serviceMinutes
+        duration: duration_value
       }
       const response = await OneTimeServiceTeamAvailabilityAction(data)
       setTeamAvailability(response)
@@ -115,7 +131,6 @@ const OneTimeServicesAssignment: React.FC = () => {
   }
 
   const handleBookingSelect = (booking: PropBooking) => {
-    setSelectedBooking(booking)
     setSelectedSlot(null)
     setSelectedDate(null)
     fetchTeamAvailability(booking)
@@ -396,7 +411,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                                     available
                                   </div>
                                 </div>
-                                {teamAvailability.data.summary.best_team.team_id === team.team_id && (
+                                {teamAvailability.data?.summary?.best_team?.team_id === team.team_id && (
                                   <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
                                     Recommended
                                   </span>
