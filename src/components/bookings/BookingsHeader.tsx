@@ -1037,9 +1037,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                     <p>
                       <span className='text-gray-500'>Bundle:</span>{" "}
                       {bookingData.bundle
-                        .split("bundle-")[1]
-                        .split("-gap")[0]
-                        .replaceAll("-", ", ")}
+                        ?.split("bundle-")[1]
+                        ?.split("-gap")[0]
+                        ?.replaceAll("-", ", ")}
                     </p>
                     <p>{bookingData.timeSlot}</p>
                   </div>
@@ -1822,12 +1822,12 @@ const BookingsHeader: React.FC = () => {
             <ArrowDownTrayIcon className='w-5 h-5 mr-2' />
             Export
           </button>
-          <button
+          {/* <button
             onClick={() => setShowBookingDialog(true)}
             className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center'>
             <PlusCircleIcon className='w-5 h-5 mr-2' />
             New Booking
-          </button>
+          </button> */}
         </div>
       </div>
 

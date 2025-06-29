@@ -103,6 +103,10 @@ interface TimeSlot {
   id: string;
   time: string;
   available: boolean;
+  originalScheduleIds?: string[];
+  date?: string;
+  scheduleId?: string; // Optional, if needed for further processing
+  [key: string]: any; // Allow additional properties
 }
 
 enum RescheduleStep {
@@ -196,11 +200,14 @@ const ReschedulePackageModal: React.FC<{
         );
 
         // Transform the response into time slots format
-        const slots = response.availableSlots.map((slot: any) => ({
-          id: `${slot.id}_${slot.startTime}-${slot.endTime}`,
-          time: `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
-          available: true,
-        }));
+        const slots = response.data.availableSlots.map((slot: any) => ({
+            id: slot.id,
+            time: `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`,
+            available: true,
+            originalScheduleIds: slot.originalScheduleIds || [],
+            date: slot.date,
+            scheduleId: slot.scheduleId || "",
+          }));
 
         setAvailableTimeSlots(slots);
         setCurrentStep(RescheduleStep.SELECT_TIMESLOT);
@@ -267,19 +274,21 @@ const ReschedulePackageModal: React.FC<{
         return;
       }
 
-      const selectedTime =
-        availableTimeSlots.find((slot) => slot.id === selectedTimeSlot)?.time ||
-        "";
-      const timeSplit = selectedTime.split("-");
+     const selectedTime = availableTimeSlots.find(
+        (slot) => slot.id === selectedTimeSlot
+      );
+
+      const timeSplit = selectedTime?.time.split("-") || [];
       const startTime = formatTimeTo24Hrs(timeSplit[0].trim());
       const endTime = formatTimeTo24Hrs(timeSplit[1].trim());
-      const scheduleId = selectedTimeSlot.split("_").at(0) || "";
+      const scheduleId = selectedTime?.scheduleId || "";
       const rescheduleRes = await ReschedulesAction(
         selectedAvailability.id,
         scheduleId,
         startTime,
         endTime,
-        pkg.team_availability_ids
+        selectedTime?.date || undefined,
+        selectedTime?.originalScheduleIds || []
       );
       toast.success("Reschedule successfully");
       setDisableConfirm(false);

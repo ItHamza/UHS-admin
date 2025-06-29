@@ -320,7 +320,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                       <div className="space-y-1 text-sm">
                         <div className="flex items-center">
                           <Home className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{selectedBooking.service.name}</span>
+                          <span>{selectedBooking.service.name === 'Residential Cleaning' ? 'Specialised Cleaning' : selectedBooking.service.name}</span>
                         </div>
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-2 text-gray-400" />
@@ -357,6 +357,28 @@ const OneTimeServicesAssignment: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  {selectedBooking.bookingItems?.length > 0 && (
+                    <div className="md:col-span-2 mt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Sub-Services</h4>
+                      <div className="space-y-3 text-sm">
+                        {selectedBooking.bookingItems.map((item, index) => (
+                          <div key={index} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                            <div className="flex justify-between">
+                              <span className="text-gray-800 font-semibold">{item.subServiceItem?.name}</span>
+                              <span className="text-gray-600">
+                                Qty: <strong>{item.quantity}</strong>
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-gray-600 mt-1">
+                              <span>Category: {item.subServiceItem?.category}</span>
+                              <span>Price per unit: {item.subServiceItem?.price_per_unit} QAR</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
 
                 {/* Team Availability */}

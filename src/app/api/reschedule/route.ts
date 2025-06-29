@@ -20,11 +20,18 @@ async function reschedule(data: any) {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const { teamAvailabilityId, newScheduleId, newStartTime, newEndTime, originalScheduleIds } =
-      await req.json();
 
-    if (!teamAvailabilityId || !newScheduleId || !newStartTime || !newEndTime || !originalScheduleIds) {
+  try {
+    const {
+      teamAvailabilityId,
+      scheduleId,
+      startTime,
+      endTime,
+      date,
+      originalScheduleIds,
+    } = await req.json();
+
+    if (!teamAvailabilityId || !scheduleId || !startTime || !endTime) {
       return NextResponse.json(
         {
           success: false,
@@ -33,7 +40,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const data = { teamAvailabilityId, newScheduleId, newStartTime, newEndTime, originalScheduleIds };
+    const data = {
+      teamAvailabilityId,
+      newScheduleId: scheduleId,
+      newStartTime: startTime,
+      newEndTime: endTime,
+      newDate: date,
+      originalScheduleIds,
+    };
     const rescheduleRes = await reschedule(data);
 
     return NextResponse.json({

@@ -5,7 +5,7 @@ import { Dialog, Transition } from "@headlessui/react"
 import { Fragment } from "react"
 import { X, Users, MapPin, Briefcase, Clock, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
-import { CreateTeamMemberAction, UpdateTeamAction } from "@/actions/team"
+import { CreateTeamAction, CreateTeamMemberAction, DeleteTeamAction, UpdateTeamAction } from "@/actions/team"
 import { TeamMembersAction } from "@/actions/users"
 import AreaAction from "@/actions/area"
 import DistrictAction from "@/actions/district"
@@ -92,6 +92,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
   const [residenceTypes, setResidenceTypes] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
   const [teamMembers, setTeamMembers] = useState<any[]>([])
+  const [isUpdateable, setIsUpdateable] = useState(true)
 
   // Helper function to normalize off_days
   const normalizeOffDays = (off_days: any): string[] => {
@@ -230,6 +231,17 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
     }))
   }
 
+  const hasScheduleFieldsChanged = () => {
+  return (
+    team.start_date !== teamData.start_date ||
+    team.work_start_time !== teamData.work_start_time ||
+    team.work_end_time !== teamData.work_end_time ||
+    team.break_start_time !== teamData.break_start_time ||
+    team.break_end_time !== teamData.break_end_time ||
+    JSON.stringify(team.off_days) !== JSON.stringify(teamData.off_days) // array comparison
+  );
+};
+
   const handleSubmit = async () => {
     try {
       setSubmitting(true)
@@ -246,9 +258,14 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
         break_start_time: teamData.break_start_time || undefined,
         break_end_time: teamData.break_end_time || undefined,
       }
-
-      const updatedTeam = await UpdateTeamAction(submitData)
-      onUpdate(updatedTeam)
+      if (isUpdateable && hasScheduleFieldsChanged()) {
+        const deleteResponse = await DeleteTeamAction(submitData.id)
+        const createRes = await CreateTeamAction(submitData)
+        window.location.reload();
+      } else {
+        const updatedTeam = await UpdateTeamAction(submitData)
+        onUpdate(updatedTeam)
+      }
       toast.success("Team updated successfully!")
       onClose()
     } catch (error: any) {
@@ -358,6 +375,12 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
       }
     })
   }, [services])
+
+  useEffect(() => {
+  if (currentStep === 5) {
+    setIsUpdateable(team.service_count === 0);
+  }
+}, [currentStep, team.service_count]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -680,7 +703,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
           </div>
         )
       case 5:
-        const isScheduleUpdateAllowed = team.service_count != 0;
+        const isScheduleUpdateAllowed = team.service_count === 0;
         return (
           <div className="space-y-6">
             <div className="text-center">

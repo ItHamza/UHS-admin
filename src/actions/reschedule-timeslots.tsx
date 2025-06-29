@@ -8,5 +8,5 @@ export default async function RescheduleTimeslotsAction(
 ) {
   const timeslots = await getRescheduleTimeslots({ teamId, date, minutes });
 
-  return timeslots.data;
+  return timeslots;
 }

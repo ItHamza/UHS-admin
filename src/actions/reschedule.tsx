@@ -3,13 +3,19 @@ import { createReschedule } from "@/lib/service/reschedule";
 
 export default async function ReschedulesAction(
   teamAvailabilityId: string,
-  newScheduleId: string,
-  newStartTime: string,
-  newEndTime: string,
-  originalScheduleIds: string[]
+  scheduleId: string,
+  startTime: string,
+  endTime: string,
+  date?: string | null,
+  originalScheduleIds?: string[] | null
 ) {
   const rescheduleCreateRes = await createReschedule({
-    teamAvailabilityId, newScheduleId, newStartTime, newEndTime, originalScheduleIds
+    teamAvailabilityId,
+    scheduleId,
+    startTime,
+    endTime,
+    date,
+    originalScheduleIds,
   });
 
   return rescheduleCreateRes.data;

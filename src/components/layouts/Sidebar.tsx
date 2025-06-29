@@ -29,7 +29,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Dashboard", href: "/dashboard", icon: RiDashboardLine },
     { name: "Customers", href: "/customers", icon: RiUserLine },
     { name: "Bookings", href: "/bookings", icon: RiBookmarkLine },
-    { name: "Schedules", href: "/schedules", icon: RiCalendarLine },
     { name: "Roster Management", href: "/roster", icon: RiCalculatorFill },
     { name: "Teams", href: "/teams", icon: RiTeamFill },
     { name: "Project Management", href: "/managements", icon: RiMapPinRangeFill },

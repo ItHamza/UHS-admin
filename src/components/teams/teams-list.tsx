@@ -98,7 +98,7 @@ const TeamsList: React.FC = () => {
       // Ensure team_number exists
       team_number: team.team_number || `TEAM-${team.id.slice(0, 8)}`,
       // Use team_summary counts if available
-      service_count: team.team_summary?.services_count || team.services?.length || 0,
+      // service_count: team.team_summary?.services_count || team.services?.length || 0,
       ratings: team.ratings || 0,
     }
   }
