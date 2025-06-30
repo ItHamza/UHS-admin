@@ -202,13 +202,23 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
           </div>
           <div className='mt-6 flex gap-4 '>
       
-            {(booking.status === "active" || booking.status == 'scheduled' || booking.status == 'upcoming') && (
+            {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming") && (
               <>
-                {/* <button
-                  onClick={() => setIsRenewModalOpen(true)}
-                  className='flex-1 h-10 bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'>
-                  Renew
-                </button> */}
+                {booking.has_renewed ? (
+                  <button
+                    disabled
+                    className='flex-1 h-10 bg-green-100 text-green-700 border border-green-300 rounded-lg text-sm font-medium shadow-sm cursor-not-allowed'>
+                    Renewed
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsRenewModalOpen(true)}
+                    className='flex-1 h-10 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded-lg text-sm font-medium shadow-sm transition'>
+                    Renew
+                  </button>
+                )}
+
+
                 <button
                   onClick={() => setIsRescheduleModalOpen(true)}
                   className='flex-1 h-10 bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'>
@@ -232,14 +242,14 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
           </div>
         </div>
       </div>
-      {/* <RenewModal
+      <RenewModal
         isOpen={isRenewModalOpen}
         onClose={() => setIsRenewModalOpen(false)}
         bookingData={booking}
         onRenew={() => {
           window.location.reload();
         }}
-      /> */}
+      />
       {isRescheduleModalOpen && (
         <RescheduleModal
           pkg={booking}

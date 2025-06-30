@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Booking } from "@/types/booking";
-import { Clock, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { Clock, X, CreditCard, Calendar, MapPin, Loader2 } from "lucide-react";
 import moment from "moment";
 import CustomDatePicker from "../ui/custom-date-picker";
 import CalendarAction from "@/actions/calendar";
@@ -14,6 +14,9 @@ import BlockBookingAction from "@/actions/block";
 import toast from "react-hot-toast";
 import ConfirmBookingAction from "@/actions/confirmBooking";
 import Loader from "../ui/loader";
+import { format } from "date-fns";
+import { BookingByIdAction, ConfirmRenewAction } from "@/actions/booking";
+import { Button } from "@headlessui/react";
 
 interface Bundle {
   id: string;
@@ -33,6 +36,28 @@ interface RenewModalProps {
     timeSlot: TimeSlot;
   }) => void;
 }
+
+interface ServiceDetail {
+  id: string;
+  name: string;
+  description?: string;
+  price?: number;
+}
+
+interface BookingService {
+  service: ServiceDetail;
+  teamAvailabilities: Array<{
+    id: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+  }>;
+  total_amount?: number;
+  recurrence_plan?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 
 const RenewModal: React.FC<RenewModalProps> = ({
   isOpen,
@@ -59,21 +84,106 @@ const RenewModal: React.FC<RenewModalProps> = ({
     TimeSlot | undefined
   >(undefined);
   const [timeslotsSelected, setTimeSlotsSelected] = useState<any>();
-  const [loading, setLoading] = useState({
-    calendar: false,
-    booking: false,
-    timeslot: false,
-    blockSchedule: false,
-  });
+  const [loading, setLoading] = useState(false)
 
   const [blockingTimer, setBlockingTimer] = useState<number | null>(null);
   const [isBlockingTimerActive, setIsBlockingTimerActive] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string[]>([]);
   const [calendar, setCalendar] = useState<any[]>([]);
 
+  const [services, setServices] = useState<BookingService[]>([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  
+  const [isConfirmRenew, setIsConfirmRenew] = useState(false);
+
+
   const startBlockingTimer = () => {
     setIsBlockingTimerActive(true);
     setBlockingTimer(600);
+  };
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "PPP");
+    } catch {
+      return "Invalid Date";
+    }
+  };
+
+    // Format time function
+  const formatTime = (timeString: string): string => {
+    if (!timeString) return "N/A";
+    try {
+      return format(new Date(`2000-01-01T${timeString}`), "h:mm a");
+    } catch {
+      return "Invalid Time";
+    }
+  };
+
+
+  const fetchBookingServices = async (bookingId: string) => {
+    try {
+      setLoading(true);
+
+      // If we already have renewBookingData with a renew_booking_id, use that
+      const targetBookingId = bookingData?.renew_booking_id || bookingId;
+
+      const response = await BookingByIdAction(targetBookingId);
+      if (response) {
+        // Transform the response into our expected format
+        const serviceData: BookingService = {
+          service: {
+            id: response.service?.id || "",
+            name: response.service?.name || "Unknown Service",
+            description: response.service?.description,
+            price: response.service?.price,
+          },
+          teamAvailabilities: response.teamAvailabilities || [],
+          total_amount: response.total_amount,
+          recurrence_plan: response.recurrence_plan,
+          start_date: response.date,
+          end_date: response.end_date,
+        };
+
+        setServices([serviceData]);
+        setTotalAmount(parseFloat(response.total_amount) || 0);
+      } else {
+        toast.error("Failed to load booking details");
+      }
+    } catch (error) {
+      console.error("Error fetching booking services:", error);
+      toast.error("Error loading booking information");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onConfirmRenew = async (): Promise<void> => {
+    try {
+      setIsConfirmRenew(true);
+      // Use the renewal booking ID or the main booking ID
+      const bookingId = bookingData?.renew_booking_id;
+
+      const newData = { status: "pending", payment_status: 'pending', is_renewed: true, prev_booking_id: bookingData.id}
+      if (!bookingId && !bookingData.id) {
+        toast.error("Booking ID not found for renewal");
+        return;
+      }
+
+      const response = await ConfirmRenewAction(bookingId, newData);
+      if (response) {
+
+        setIsConfirmRenew(false);
+        location.reload()
+      } else {
+        throw new Error("No payment URL returned");
+      }
+    } catch (error: any) {
+      console.error("Error renewal booking:", error);
+      toast.error(error.message || "Failed to initiate renew booking");
+      setIsConfirmRenew(false);
+    }
   };
 
   useEffect(() => {
@@ -97,7 +207,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   const fetchBundles = async () => {
     try {
-      setLoading((prev) => ({ ...prev, booking: true }));
+      setLoading(true);
       const formattedDate = moment(startDate).format("YYYY-MM-DD");
       const residenceSelected = bookingData.residence_type;
 
@@ -131,7 +241,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
     } catch (error) {
       console.error("Error fetching bundles:", error);
     } finally {
-      setLoading((prev) => ({ ...prev, booking: false }));
+      setLoading(false);
     }
   };
 
@@ -166,7 +276,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   const fetchTimeSlots = async (bundleId: string) => {
     try {
-      setLoading((prev) => ({ ...prev, booking: true }));
+      setLoading(true);
       if (!bundles || bundles.length === 0) {
         console.error("No bundles available");
         return;
@@ -180,7 +290,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
     } catch (error) {
       console.error("Error fetching time slots:", error);
     } finally {
-      setLoading((prev) => ({ ...prev, booking: false }));
+      setLoading(false);
     }
   };
 
@@ -219,17 +329,17 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   const fetchCalendar = async (startDate: string, endDate: string, booking_id: string, team_id: string, user_id: string) => {
     try {
-      setLoading((prev) => ({ ...prev, calendar: true }));
+      setLoading(true);
       const response = await CalendarAction(startDate, endDate, booking_id, team_id, user_id);
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable)
         .map(([dateString]) => new Date(dateString));
 
       setCalendar(unavailableDates);
-      setLoading((prev) => ({ ...prev, calendar: false }));
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching properties:", error);
-      setLoading((prev) => ({ ...prev, calendar: false }));
+      setLoading(false);
     }
   };
 
@@ -259,7 +369,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   const blockSchedule = async () => {
     try {
-      setLoading((prev) => ({ ...prev, blockSchedule: true }));
+      setLoading(true);
       let timeslotsSelected: any[] = [];
 
       const selectedBundleId = selectedBundle?.id;
@@ -352,9 +462,9 @@ const RenewModal: React.FC<RenewModalProps> = ({
       startBlockingTimer();
 
       //   console.log("block data", data, selectedSlots);
-      setLoading((prev) => ({ ...prev, blockSchedule: false }));
+      setLoading(false);
     } catch (error: any) {
-      setLoading((prev) => ({ ...prev, blockSchedule: false }));
+      setLoading(false);
       console.log("error", error);
       toast.error(error.message || "something went wrong");
     }
@@ -362,7 +472,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   const handleRenew = async () => {
     try {
-      setLoading((prev) => ({ ...prev, blockSchedule: true }));
+      setLoading(true);
       const response = await ConfirmBookingAction({
         userPhone: bookingData.user.phone,
         specialInstructions: bookingData.instructions,
@@ -375,7 +485,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
     } catch (error: any) {
       toast.error(error.message);
     } finally {
-      setLoading((prev) => ({ ...prev, blockSchedule: false }));
+      setLoading(false);
     }
   };
 
@@ -393,17 +503,8 @@ const RenewModal: React.FC<RenewModalProps> = ({
   const prevStep = () => setStep((prev) => prev - 1);
 
   useEffect(() => {
-    if (months) {
-      const endDate = moment(bookingData.end_date)
-        .add(1, "days")
-        .add(months, "months")
-        .format("YYYY-MM-DD");
-      fetchCalendar(
-        moment(bookingData.end_date).add(1, "days").format("YYYY-MM-DD"),
-        endDate, bookingData.id, bookingData.team_id, bookingData.user.id
-      );
-    }
-  }, [months]);
+    fetchBookingServices(bookingData.id)
+  }, []);
 
   const getSliceEndIndex = () => {
     return frequencyNumberMapping[bookingData.frequency] || 1;
@@ -411,294 +512,143 @@ const RenewModal: React.FC<RenewModalProps> = ({
 
   if (!isOpen) return null;
 
-  const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <div className='space-y-4'>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='space-y-2'>
-                <label className='block text-sm font-medium text-gray-700'>
-                  Duration (Months)
-                </label>
-                <div className='relative'>
-                  <select
-                    value={months?.toString() || ""}
-                    onChange={(e) => setMonths(parseInt(e.target.value))}
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'>
-                    <option value='' disabled>
-                      Select Duration
-                    </option>
-                    {SERVICE_DURATION.map((sd) => (
-                      <option key={sd} value={sd.toString()}>
-                        {sd} {sd === 1 ? "Month" : "Months"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className='space-y-2'>
-                <label className='block text-sm font-medium text-gray-700'>
-                  Start Date
-                </label>
-                {!loading.calendar ? (
-                  <CustomDatePicker
-                    startDate={
-                      bookingData.end_date
-                        ? moment(bookingData.end_date).add(1, "days").toDate()
-                        : null
-                    }
-                    minDate={moment(computeMinDate()).toDate()}
-                    maxDate={moment(computeMaxDate()).toDate()}
-                    setStartDate={(e) => setStartDate(e as Date)}
-                    unavailableDates={calendar}
-                  />
-                ) : (
-                  <div className='text-gray-500'>Loading calendar...</div>
-                )}
-              </div>
-            </div>
-            <div className='flex justify-end mt-4'>
-              <button
-                onClick={nextStep}
-                disabled={!months || !startDate}
-                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Next: Select Bundle{" "}
-                <ChevronRight className='inline-block ml-2' />
-              </button>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className='space-y-4'>
-            <h3 className='text-lg font-semibold mb-4'>Select Bundle</h3>
-            <div className='grid md:grid-cols-1 gap-4'>
-              {bundles.length > 0 ? (
-                <div className='grid grid-cols-1  gap-3'>
-                  {bundles[0].bundles.map((bundle: any) => (
-                    <div
-                      key={bundle.id}
-                      className={`p-4 border rounded-lg col-span-2 w-full cursor-pointer transition ${
-                        selectedBundleId === bundle.id
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-300 hover:border-blue-300"
-                      }`}
-                      onClick={() => {
-                        setSelectedBundle(bundle);
-                        setSelectedBundleId(bundle.id);
-                      }}>
-                      <div className='flex justify-between items-center'>
-                        <div>
-                          <h4 className='font-medium text-gray-900'>
-                            {bundle.title}
-                          </h4>
-                        </div>
-                        {selectedBundleId === bundle.id && (
-                          <div className='w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white'>
-                            ✓
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className='text-center py-4 text-gray-500'>
-                  {loading.booking
-                    ? "Loading bundles..."
-                    : "No bundles available for the selected criteria"}
-                </div>
-              )}
-            </div>
-            <div className='flex justify-between mt-4 gap-2'>
-              <button
-                onClick={prevStep}
-                className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'>
-                <ChevronLeft className='inline-block mr-2' /> Previous
-              </button>
-              <button
-                onClick={nextStep}
-                disabled={!selectedBundleId}
-                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Next: Select Time Slot{" "}
-                <ChevronRight className='inline-block ml-2' />
-              </button>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className='space-y-4'>
-            <h3 className='text-lg font-semibold mb-4'>Select Time Slot</h3>
-            <div className='grid md:grid-cols-1 gap-4'>
-              {timeSlots.length > 0 ? (
-                <div className='space-y-4'>
-                  {timeSlots.slice(0, getSliceEndIndex()).map((day) => (
-                    <div
-                      key={`${day.day}-${day.date}`}
-                      className='border rounded-lg p-3'>
-                      <h4 className='font-medium text-gray-900 mb-2'>
-                        {day.day}
-                      </h4>
-                      <div className='grid grid-cols-2 gap-2'>
-                        {day.timeSlots.map((slot) => (
-                          <button
-                            key={slot.id}
-                            type='button'
-                            onClick={() =>
-                              handleTimeSlotSelection(slot, day.day, day.date)
-                            }
-                            className={`py-2 px-3 rounded-md text-sm font-medium transition ${
-                              selectedSlots[day.day] === slot.id
-                                ? "bg-blue-500 text-white"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                            }`}>
-                            {slot.startTime} - {slot.endTime}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className='text-center py-4 text-gray-500'>
-                  {loading.timeslot
-                    ? "Loading time slots..."
-                    : "No time slots available for the selected bundle"}
-                </div>
-              )}
-            </div>
-            <div className='flex justify-between mt-4 gap-2 items-center'>
-              <button
-                onClick={prevStep}
-                className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'>
-                <ChevronLeft className='inline-block mr-2' /> Previous
-              </button>
-              <button
-                onClick={nextStep}
-                disabled={!selectedSlots || loading.blockSchedule}
-                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Next: Block timeslots{" "}
-                <ChevronRight className='inline-block ml-2' />
-              </button>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className='space-y-4'>
-            <h3 className='text-lg font-semibold mb-4'>Renewal Summary</h3>
-
-            {isBlockingTimerActive && blockingTimer !== null && (
-              <div className='bg-yellow-100 border border-yellow-300 p-4 rounded-lg flex items-center justify-between'>
-                <div className='flex items-center'>
-                  <Clock className='mr-2 text-yellow-600' />
-                  <span className='text-yellow-800'>
-                    Time slots blocked for {Math.floor(blockingTimer / 60)}:
-                    {blockingTimer % 60 < 10 ? "0" : ""}
-                    {blockingTimer % 60}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className='border p-4 rounded-lg space-y-4 bg-gray-50'>
-              <div className='grid grid-cols-2 gap-2'>
-                <div>
-                  <span className='text-sm text-gray-500'>
-                    Current End Date
-                  </span>
-                  <p className='font-medium'>
-                    {moment(bookingData.end_date).format("YYYY-MM-DD")}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-sm text-gray-500'>New Start Date</span>
-                  <p className='font-medium'>
-                    {startDate
-                      ? moment(startDate).format("YYYY-MM-DD")
-                      : "Not selected"}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-sm text-gray-500'>
-                    Renewal Duration
-                  </span>
-                  <p className='font-medium'>
-                    {months} {months === 1 ? "Month" : "Months"}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-sm text-gray-500'>New End Date</span>
-                  <p className='font-medium'>
-                    {startDate && months
-                      ? moment(startDate)
-                          .add(months, "months")
-                          .format("YYYY-MM-DD")
-                      : "Not calculated"}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-sm text-gray-500'>Selected Bundle</span>
-                  <p className='font-medium'>
-                    {" "}
-                    {selectedBundle?.id
-                      .split("bundle-")[1]
-                      .split("-gap")[0]
-                      .replaceAll("-", ", ")}
-                  </p>
-                </div>
-                <div>
-                  <span className='text-sm text-gray-500'>
-                    Selected Time Slot
-                  </span>
-                  <p className='font-medium'>{timeslotsSelected}</p>
-                </div>
-              </div>
-            </div>
-            <div className='flex justify-between mt-4'>
-              <button
-                onClick={prevStep}
-                className='px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50'>
-                <ChevronLeft className='inline-block mr-2' /> Previous
-              </button>
-              {!loading.blockSchedule ? (
-                <button
-                  onClick={handleRenew}
-                  disabled={loading.blockSchedule}
-                  className='px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700'>
-                  Confirm Renewal
-                </button>
-              ) : (
-                <Loader />
-              )}
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center   bg-black/50 overflow-scroll '>
-      <div className='bg-white rounded-lg shadow-xl w-[600px] max-h-[500px] overflow-scroll max-w-full p-6'>
-        <div className='flex justify-between items-center mb-4'>
-          <h2 className='text-xl font-semibold'>Renew Service</h2>
-          <button
-            onClick={onClose}
-            className='text-gray-500 hover:text-gray-700'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-auto p-4'>
+      <div className='bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6'>
+        <div className='flex justify-between items-center'>
+          <h2 className='text-2xl font-bold'>Renew Service</h2>
+          <button onClick={onClose} className='text-gray-400 hover:text-gray-600 transition'>
             <X className='h-6 w-6' />
           </button>
         </div>
 
-        {renderStepContent()}
+        <div className='space-y-6'>
+          {/* Header */}
+          <div className='bg-green-50 p-4 rounded-lg border border-green-200'>
+            <h3 className='font-semibold text-green-800 mb-2 flex items-center'>
+              <CreditCard className='h-5 w-5 mr-2' />
+              Service Renewal
+            </h3>
+            <p className='text-sm text-green-700'>
+              Review your service details below and proceed with renewal payment.
+            </p>
+          </div>
+
+          {/* Services List */}
+          <div className='space-y-4'>
+            {services.map((serviceItem, index) => (
+              <div key={index} className='border rounded-lg p-4 bg-white shadow-sm'>
+                {/* Service Header */}
+                <div className='flex justify-between items-start mb-4'>
+                  <div>
+                    <h4 className='text-lg font-semibold text-gray-900'>
+                      {serviceItem.service.name}
+                    </h4>
+                    {serviceItem.service.description && (
+                      <p className='text-sm text-gray-600 mt-1'>
+                        {serviceItem.service.description}
+                      </p>
+                    )}
+                  </div>
+                  {serviceItem.service.price && (
+                    <div className='text-right'>
+                      <p className='text-lg font-bold text-primary'>
+                        QAR {serviceItem.service.price}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Service Details Grid */}
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
+                  <div className='flex items-center text-sm'>
+                    <Calendar className='h-4 w-4 mr-2 text-gray-500' />
+                    <div>
+                      <span className='font-medium'>Frequency: </span>
+                      <span className='capitalize'>
+                        {serviceItem.recurrence_plan?.replace("_", " ") || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className='flex items-center text-sm'>
+                    <MapPin className='h-4 w-4 mr-2 text-gray-500' />
+                    <div>
+                      <span className='font-medium'>Service Period: </span>
+                      <span>
+                        {formatDate(serviceItem.start_date as string)} -{" "}
+                        {formatDate(serviceItem.end_date as string)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team Availabilities */}
+                {serviceItem.teamAvailabilities &&
+                  serviceItem.teamAvailabilities.length > 0 && (
+                    <div>
+                      <h5 className='font-medium text-gray-700 mb-3 flex items-center'>
+                        <Clock className='h-4 w-4 mr-2' />
+                        Scheduled Sessions
+                      </h5>
+                      <div className='space-y-3'>
+                        {serviceItem.teamAvailabilities.map((availability) => (
+                          <div
+                            key={availability.id}
+                            className='flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-md'>
+                            <div className='flex items-center'>
+                              <Calendar className='h-4 w-4 mr-2 text-gray-500' />
+                              <span className='font-medium'>
+                                {formatDate(availability.date)}
+                              </span>
+                            </div>
+                            <div className='flex items-center mt-2 sm:mt-0'>
+                              <Clock className='h-4 w-4 mr-2 text-gray-500' />
+                              <span>
+                                {formatTime(availability.start_time)} -{" "}
+                                {formatTime(availability.end_time)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            ))}
+          </div>
+
+          {/* Total Amount */}
+          <div className='bg-gray-100 p-4 rounded-lg border'>
+            <div className='flex justify-between items-center'>
+              <h4 className='text-lg font-medium'>Total Renewal Amount</h4>
+              <p className='text-xl font-bold text-green-700'>QAR {totalAmount.toFixed(2)}</p>
+            </div>
+          </div>
+
+          {/* Confirm Button */}
+          <div className='sticky bottom-0 bg-white pt-4 border-t mt-6'>
+            <Button
+              onClick={onConfirmRenew}
+              disabled={isConfirmRenew}
+              className='w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex justify-center items-center'>
+              {isConfirmRenew ? (
+                <>
+                  <Loader2 className='mr-2 h-5 w-5 animate-spin' />
+                  Confirming renew booking...
+                </>
+              ) : (
+                <>
+                  <CreditCard className='mr-2 h-5 w-5 -mt-0.5' />
+                  Confirm Renew Booking (QAR {totalAmount.toFixed(2)})
+                </>
+              )}
+            </Button>
+          </div>
+
+
+        </div>
       </div>
     </div>
   );
