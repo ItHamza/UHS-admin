@@ -7,7 +7,7 @@ const BASE_URL =
 
 async function fetchBundles(body: any) {
   try {
-    const response = await fetch(`${BASE_URL}/bundles`, {
+    const response = await fetch(`${BASE_URL}/bundles/get-bundles`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -25,7 +25,7 @@ async function fetchBundles(body: any) {
     }
 
     const data = JSON.parse(responseText);
-    return data.suggestedBundles || [];
+    return data || [];
   } catch (error) {
     console.error("Error fetching bundles:", error);
     throw error;

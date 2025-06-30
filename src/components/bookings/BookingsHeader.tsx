@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ArrowDownTrayIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+import { Check } from "lucide-react";
 import ServicesAction from "@/actions/service-action";
 import AreaAction from "@/actions/area";
 import DistrictAction from "@/actions/district";
@@ -44,6 +45,15 @@ export const frequencyNumberMapping: Record<string, number> = {
   six: 6,
 };
 
+// Helper function to format time (same as TimeSlots component)
+const formatTime = (time: string) => {
+  const [hours, minutes] = time.split(":");
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
 interface BookingData {
   service: string;
   subService: string;
@@ -72,6 +82,7 @@ interface FinalBookingData {
     schedule_id: string;
     start_time: string;
     end_time: string;
+    date: string;
   }[];
   teamId: string;
   areaId: string;
@@ -81,15 +92,11 @@ interface FinalBookingData {
   startDate: string;
   endDate: string;
   frequency: string;
-}
-
-export interface TimeSlot {
-  day: string;
-  date: string;
-  timeSlots: {
-    id: string;
-    startTime: string;
-    endTime: string;
+  renewal_slots: {
+    schedule_id: string;
+    start_time: string;
+    end_time: string;
+    date: string;
   }[];
 }
 
@@ -147,6 +154,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     startDate: "",
     endDate: "",
     frequency: "",
+    renewal_slots: [],
   });
 
   const [services, setServices] = useState<any[]>([]);
@@ -162,18 +170,19 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   const [timeLeft, setTimeLeft] = useState(600);
   const [showSummary, setShowSummary] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<Record<string, string>>(
-    {}
-  );
+
+  // TimeSlots component state structure
+  const [selectedBundleDetail, setSelectedBundleDetail] = useState<any>(null);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<any[]>([]);
+  const [renewalSlots, setRenewalSlots] = useState<any[]>([]);
   const [bundles, setBundles] = useState<any[]>([]);
 
-  const totalSteps = 6; // Reduced from 7 since we removed the user details step
+  const totalSteps = 6;
 
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await UsersActions(); // Replace with your actual user fetch action
+      const response = await UsersActions();
       setUsers(response);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -182,17 +191,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const filteredUsers = query === ""
-    ? users
-    : users.filter((u) =>
-      `${u.name} ${u.phone}`.toLowerCase().includes(query.toLowerCase())
-    );
-
+  const filteredUsers =
+    query === ""
+      ? users
+      : users.filter((u) =>
+          `${u.name} ${u.phone}`.toLowerCase().includes(query.toLowerCase())
+        );
 
   const createNewUser = async () => {
     try {
       setIsLoading(true);
-      // Replace with your actual user creation action
       const newUser = await UserCreateAction({
         name: bookingData.userName,
         phone: bookingData.phoneNumber,
@@ -228,10 +236,22 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const fetchCalendar = async (startDate: string, endDate: string, booking_id: string, team_id: string, user_id: string) => {
+  const fetchCalendar = async (
+    startDate: string,
+    endDate: string,
+    booking_id: string,
+    team_id: string,
+    user_id: string
+  ) => {
     try {
       setIsLoading(true);
-      const response = await CalendarAction(startDate, endDate, booking_id, team_id, user_id);
+      const response = await CalendarAction(
+        startDate,
+        endDate,
+        booking_id,
+        team_id,
+        user_id
+      );
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable)
         .map(([dateString]) => new Date(dateString));
@@ -374,6 +394,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       const propertyLocation = {
         lat: propertySelected.latitude,
         lng: propertySelected.longitude,
+        district_id: bookingData.district,
       };
 
       const payload = {
@@ -400,14 +421,20 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
       const response = await BundlesAction({
         startDate: payload.startDate,
-        location: payload.location as { lat: any; lng: any },
+        location: payload.location as {
+          lat: any;
+          lng: any;
+          district_id: string;
+        },
         frequency: payload.frequency,
         servicePeriod: payload.servicePeriod,
         duration: payload.duration,
         serviceType: payload.serviceType,
+        serviceId: bookingData.subService,
       });
-      console.log("payload", response);
-      setBundles(response.data);
+
+      console.log("Bundle response:", response.data);
+      setBundles(response.data || []);
     } catch (error) {
       console.error("Error fetching bundles:", error);
     } finally {
@@ -415,125 +442,110 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  function filterTimeSlotsByBundleId(
-    teamsData: any,
-    bundleId: string
-  ): TimeSlot[] {
-    const filteredTimeSlots: TimeSlot[] = [];
-
-    teamsData.forEach((team: any) => {
-      team.availableBundles.forEach((bundle: any) => {
-        if (bundle.bundleId === bundleId) {
-          setSelectedTeamId(team.teamId);
-
-          setFinalBookingData((prev) => ({
-            ...prev,
-            teamId: team.teamId,
-          }));
-
-          bundle.bookingDays.forEach((day: any) => {
-            filteredTimeSlots.push({
-              day: day.day,
-              date: day.date,
-              timeSlots: day.timeSlots.map((slot: any) => ({
-                id: `${slot.scheduleId}_${slot.startTime}-${slot.endTime}`,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-              })),
-            });
-          });
-        }
-      });
+  // Using the exact logic from TimeSlots component
+  const handleTimeSlotSelect = (day: string, index: number): void => {
+    console.log("handleTimeSlotSelect called:", {
+      day,
+      index,
+      selectedBundleDetail,
     });
 
-    return filteredTimeSlots;
-  }
-
-  const fetchTimeSlots = async (bundleId: string) => {
-    try {
-      setIsLoading(true);
-      if (!bundles || bundles.length === 0) {
-        console.error("No bundles available");
-        return;
-      }
-
-      const timeslotsRes = filterTimeSlotsByBundleId(
-        bundles[0].teams,
-        bundleId
-      );
-      setTimeSlots(timeslotsRes);
-    } catch (error) {
-      console.error("Error fetching time slots:", error);
-    } finally {
-      setIsLoading(false);
+    if (!selectedBundleDetail || !selectedBundleDetail.booking) {
+      console.error("No selectedBundleDetail or booking data");
+      return;
     }
+
+    let timeslots: any[] = [...selectedTimeSlots]; // Create a copy of the array
+    let renewalSlotTemp: any[] = [...renewalSlots];
+
+    selectedBundleDetail.booking.forEach((bk: any) => {
+      if (bk.day === day) {
+        const timeSlotFiltered = bk.timeSlots.filter(
+          (ts: any) =>
+            ts.startTime === bk.timeSlots[index].startTime &&
+            ts.endTime === bk.timeSlots[index].endTime
+        )[0];
+
+        const existIndex = timeslots.findIndex(
+          (v) => v.date === timeSlotFiltered.date
+        );
+
+        if (existIndex !== -1) {
+          timeslots[existIndex] = {
+            start_time: timeSlotFiltered.startTime + ":00",
+            end_time: timeSlotFiltered.endTime + ":00",
+            schedule_id: timeSlotFiltered.scheduleId,
+            date: timeSlotFiltered.date,
+          };
+        } else {
+          timeslots.push({
+            start_time: timeSlotFiltered.startTime + ":00",
+            end_time: timeSlotFiltered.endTime + ":00",
+            schedule_id: timeSlotFiltered.scheduleId,
+            date: timeSlotFiltered.date,
+          });
+        }
+      }
+    });
+
+    selectedBundleDetail.renewableSlots.forEach((bk: any) => {
+      if (bk.day === day) {
+        const timeSlotFiltered = bk.timeSlots.filter(
+          (ts: any) =>
+            ts.startTime === bk.timeSlots[index].startTime &&
+            ts.endTime === bk.timeSlots[index].endTime
+        )[0];
+
+        const existIndex = renewalSlotTemp.findIndex(
+          (v) => v.date === timeSlotFiltered.date
+        );
+
+        if (existIndex !== -1) {
+          renewalSlotTemp[existIndex] = {
+            start_time: timeSlotFiltered.startTime + ":00",
+            end_time: timeSlotFiltered.endTime + ":00",
+            schedule_id: timeSlotFiltered.scheduleId,
+            date: timeSlotFiltered.date,
+          };
+        } else {
+          renewalSlotTemp.push({
+            start_time: timeSlotFiltered.startTime + ":00",
+            end_time: timeSlotFiltered.endTime + ":00",
+            schedule_id: timeSlotFiltered.scheduleId,
+            date: timeSlotFiltered.date,
+          });
+        }
+      }
+    });
+
+    // Sort the timeslots by date in ascending order
+    const sortedTimeslots = [...timeslots].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    const sortedRenewalSlots = [...renewalSlotTemp].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    console.log(
+      "booking and renewal slots",
+      sortedTimeslots,
+      sortedRenewalSlots
+    );
+
+    setSelectedTimeSlots(sortedTimeslots);
+    setRenewalSlots(sortedRenewalSlots);
+
+    // Update final booking data
+    setFinalBookingData((prev) => ({
+      ...prev,
+      timeslots: sortedTimeslots,
+      renewal_slots: sortedRenewalSlots,
+    }));
   };
 
   const getSliceEndIndex = () => {
     return frequencyNumberMapping[bookingData.frequency] || 1;
-  };
-  const [selectedDay, setSelectedDay] = useState<string[]>([]);
-  const handleTimeSlotSelection = (slot: any, day: string, date: string) => {
-    let newSelections = { ...selectedSlots };
-
-    const hasExistingSelection = newSelections[day] !== undefined;
-    const isSameSlot = newSelections[day] === slot.id;
-
-    if (isSameSlot) {
-      delete newSelections[day];
-      setSelectedDay(selectedDay.filter((d) => d !== day));
-    } else {
-      newSelections[day] = slot.id;
-      if (!selectedDay.includes(day)) {
-        setSelectedDay([...selectedDay, day]);
-      }
-    }
-
-    setSelectedSlots(newSelections);
-
-    setFinalBookingData((prev) => {
-      const filteredTimeslots = prev.timeslots.filter((t) => {
-        return !t.schedule_id.includes(date);
-      });
-
-      if (!isSameSlot) {
-        const newTimeslot = {
-          schedule_id: slot.id,
-          start_time: slot.startTime,
-          end_time: slot.endTime,
-          date: date,
-          day: day,
-        };
-
-        return {
-          ...prev,
-          timeslots: [...filteredTimeslots, newTimeslot],
-        };
-      }
-
-      return {
-        ...prev,
-        timeslots: filteredTimeslots,
-      };
-    });
-
-    const selectedSlotsList = Object.entries(newSelections)
-      .map(([dateStr, slotId]) => {
-        const matchingDay = timeSlots.find((d) => d.day === dateStr);
-        if (!matchingDay) return "";
-
-        const matchingSlot = matchingDay.timeSlots.find((s) => s.id === slotId);
-        if (!matchingSlot) return "";
-
-        return `${matchingDay.day} - ${matchingSlot.startTime} to ${matchingSlot.endTime}`;
-      })
-      .filter(Boolean)
-      .join(", ");
-
-    setBookingData((prev) => ({
-      ...prev,
-      timeSlot: selectedSlotsList,
-    }));
   };
 
   useEffect(() => {
@@ -547,20 +559,20 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (selectedUserId) {
       const selectedUser = users.filter((us) => us.id === selectedUserId)[0];
-      if (selectedUser.area) {
+      if (selectedUser?.area) {
         setBookingData((prev) => ({
           ...prev,
           area: selectedUser.area,
         }));
       }
-      if (selectedUser.area && selectedUser.districtId) {
+      if (selectedUser?.area && selectedUser.districtId) {
         setBookingData((prev) => ({
           ...prev,
           district: selectedUser.districtId,
         }));
       }
       if (
-        selectedUser.area &&
+        selectedUser?.area &&
         selectedUser.districtId &&
         selectedUser.propertyId
       ) {
@@ -570,7 +582,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         }));
       }
       if (
-        selectedUser.area &&
+        selectedUser?.area &&
         selectedUser.districtId &&
         selectedUser.propertyId &&
         selectedUser.residenceTypeId
@@ -580,7 +592,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
           residenceType: selectedUser.residenceTypeId,
         }));
       }
-      if (selectedUser.apartment_number) {
+      if (selectedUser?.apartment_number) {
         setBookingData((prev) => ({
           ...prev,
           apartmentNumber: selectedUser.apartment_number,
@@ -592,99 +604,29 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   const blockSchedule = async () => {
     try {
       setIsLoading(true);
-      let timeslotsSelected: any[] = [];
-
-      const selectedBundleId = bookingData.bundle;
-
-      const selectedSlotsArray = bundles[0].teams.flatMap((team: any) =>
-        team.availableBundles
-          .filter((av: any) => av.bundleId === selectedBundleId)
-          .flatMap((av: any) =>
-            Object.entries(selectedSlots).map(
-              ([day, slotInfo]: [string, any]) => {
-                const startTime = slotInfo.split("_")[1].split("-")[0];
-                const endTime = slotInfo.split("_")[1].split("-")[1];
-
-                const scheduleId = slotInfo.split("_")[0];
-                const matchingTimeSlots = av.bookingDays
-                  .filter((d: any) => d.day === day)
-                  ?.flatMap((d: any) => d.timeSlots)
-                  .filter(
-                    (slot: any) =>
-                      slot.startTime === startTime && slot.endTime === endTime
-                  );
-
-                timeslotsSelected = [
-                  ...timeslotsSelected,
-                  ...matchingTimeSlots,
-                ];
-
-                return matchingTimeSlots.map((matchSlot: any) => ({
-                  schedule_id: scheduleId,
-                  start_time: startTime,
-                  end_time: endTime,
-                  day: day,
-                }));
-              }
-            )
-          )
-          .flat()
-          .filter(Boolean)
-      );
-
-      const endDate =
-        bookingData.frequency !== "one_time"
-          ? moment(bookingData.startDate)
-              .add(parseInt(bookingData.duration), "months")
-              .format("YYYY-MM-DD")
-          : moment(bookingData.startDate).add(1, "day").format("YYYY-MM-DD");
-
-      const firstTimeslot = timeslotsSelected[0];
-      const startTime = firstTimeslot ? firstTimeslot.startTime : "00:00";
-      const endTime = firstTimeslot ? firstTimeslot.endTime : "00:00";
-
-      const formattedEndDate =
-        bookingData.frequency === "one_time"
-          ? `${endDate}T${endTime}:00`
-          : endDate;
 
       const data: any = {
         userPhone: bookingData.phoneNumber,
         no_of_cleaners: 2,
         userId: selectedUserId,
-        timeslots:
-          bookingData.frequency === "one_time"
-            ? timeslotsSelected.slice(0, 1).map((ts) => ({
-                start_time: ts.startTime + ":00",
-                end_time: ts.endTime + ":00",
-                schedule_id: ts.scheduleId,
-              }))
-            : timeslotsSelected.map((ts) => ({
-                start_time: ts.startTime + ":00",
-                end_time: ts.endTime + ":00",
-                schedule_id: ts.scheduleId,
-              })),
-        teamId: selectedTeamId,
+        timeslots: selectedTimeSlots,
+        teamId: selectedBundleDetail?.teamId || selectedTeamId,
         areaId: bookingData.area,
         districtId: bookingData.district,
         propertyId: bookingData.property,
         residenceTypeId: bookingData.residenceType,
-        startDate:
-          bookingData.frequency === "one_time"
-            ? moment(bookingData.startDate).format("YYYY-MM-DD") +
-              "T" +
-              startTime
-            : moment(bookingData.startDate).format("YYYY-MM-DD"),
-        endDate: formattedEndDate,
+        startDate: bookingData.startDate,
+        endDate: finalBookingData.endDate,
         frequency: bookingData.frequency,
         userAvailableInApartment: bookingData.userPresent,
         specialInstructions: bookingData.specialInstructions,
         appartmentNumber: bookingData.apartmentNumber,
         serviceId: bookingData.subService,
+        renewal_slots: renewalSlots,
       };
 
-      const bookingId = await BlockBookingAction(data);
-      setBookingId("bookingId");
+      const blockData = await BlockBookingAction(data);
+      setBookingId(blockData?.booking?.id);
       setIsLoading(false);
       setShowSummary(true);
     } catch (error: any) {
@@ -711,22 +653,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
   }, [bookingId]);
 
   useEffect(() => {
-    if (bookingData.bundle) {
-      fetchTimeSlots(bookingData.bundle);
-    }
-  }, [bookingData.bundle]);
-
-  useEffect(() => {
     if (bookingData.frequency && bookingData.duration) {
       if (isFrequencyRecurring && bookingData.duration) {
         const endDate = moment()
           .add(parseInt(bookingData.duration), "months")
           .format("YYYY-MM-DD");
-        // fetchCalendar(moment().format("YYYY-MM-DD"), endDate, bookingData.id, bookingData.teamId, bookingData.user_id);
       }
     }
   }, [bookingData.frequency, bookingData.duration]);
-  const formatTime = (seconds: number) => {
+
+  const formatTimeDisplay = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
@@ -765,8 +701,6 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         bookingData.frequency
       ) {
         await fetchBundles();
-      } else if (currentStep === 4 && bookingData.bundle) {
-        await fetchTimeSlots(bookingData.bundle);
       }
 
       setIsLoading(false);
@@ -794,6 +728,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
         specialInstructions: bookingData.specialInstructions,
         appartmentNumber: bookingData.apartmentNumber,
         userAvailableInApartment: bookingData.userPresent,
+        bookingId: bookingId as string,
       });
       console.log("Service booked successfully:", response);
       window.location.reload();
@@ -807,7 +742,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       setShowCancelModal(true);
     } else {
       if (currentStep === 5) {
-        setSelectedSlots({});
+        setSelectedTimeSlots([]);
+        setRenewalSlots([]);
       }
       setCurrentStep((prev) => prev - 1);
     }
@@ -846,7 +782,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       startDate: "",
       endDate: "",
       frequency: "",
+      renewal_slots: [],
     });
+    setSelectedTimeSlots([]);
+    setRenewalSlots([]);
+    setSelectedBundleDetail(null);
     setCurrentStep(1);
     setShowCancelModal(false);
     onClose();
@@ -888,13 +828,112 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
       case 5:
         return !bookingData.bundle;
       case 6:
-        return (
-          finalBookingData.timeslots.length === 0 ||
-          !bookingData.apartmentNumber
-        );
+        const requiredSlots = getSliceEndIndex();
+        console.log("selectedlst", selectedTimeSlots);
+        return false;
       default:
         return false;
     }
+  };
+
+  // Render time slot section (updated for actual data structure)
+  const renderTimeSlotSection = (
+    day: string,
+    dayLabel: string,
+    index: number
+  ) => {
+    // Find the booking day that matches the current day
+    const bookingDay = selectedBundleDetail?.booking?.find(
+      (b: any) => b.day === day
+    );
+
+    if (
+      !bookingDay ||
+      !bookingDay.timeSlots ||
+      bookingDay.timeSlots.length === 0
+    ) {
+      return (
+        <div
+          className='bg-white rounded-xl shadow-lg p-4 sm:p-6 md:p-8'
+          key={index}>
+          <h3 className='text-base sm:text-lg md:text-[18px] font-semibold mb-4 sm:mb-6 text-gray-800'>
+            {dayLabel}*
+          </h3>
+          <p className='text-gray-500'>
+            No time slots available for {dayLabel}
+          </p>
+          <pre className='mt-2 text-xs text-gray-400'>
+            Available booking days:{" "}
+            {selectedBundleDetail?.booking?.map((b: any) => b.day).join(", ")}
+          </pre>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className='bg-white rounded-xl shadow-lg p-4 sm:p-6 md:p-8'
+        key={index}>
+        <div className='flex justify-between items-center mb-2 sm:mb-4'>
+          <h3 className='text-base sm:text-lg md:text-[18px] font-semibold text-gray-800'>
+            {dayLabel}* ({bookingDay.timeSlots.length} slots)
+          </h3>
+          {selectedTimeSlots.some(
+            (slot) =>
+              new Date(slot.date).toDateString() ===
+              new Date(bookingDay.date).toDateString()
+          ) ? (
+            <div className='flex items-center text-green-600'>
+              <Check className='w-4 h-4 mr-1' />
+              <span className='text-xs font-medium'>Selected</span>
+            </div>
+          ) : (
+            <div className='text-xs text-orange-500 font-medium'>
+              Please select
+            </div>
+          )}
+        </div>
+        <p className='text-xs text-gray-500 mb-4'>
+          Select one time slot for {dayLabel}
+        </p>
+
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4'>
+          {bookingDay.timeSlots.map((slot: any, idx: number) => {
+            // Check if this specific slot is selected (one per day)
+            const isSelected = selectedTimeSlots.some(
+              (selected: any) =>
+                selected.start_time === slot.startTime + ":00" &&
+                selected.end_time === slot.endTime + ":00" &&
+                selected.date === slot.date
+            );
+
+            return (
+              <button
+                key={idx}
+                className={`p-3 sm:p-4 border rounded-xl text-center transition-all flex items-center justify-between duration-200 shadow-sm hover:shadow-md min-h-[60px] sm:min-h-[70px] ${
+                  isSelected
+                    ? "border-[#25388C] bg-white shadow-lg ring-2 ring-[#25388C] ring-opacity-20"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                onClick={() => handleTimeSlotSelect(day, idx)}>
+                <div className='font-medium flex-1 text-sm sm:text-base md:text-[16px] text-gray-700 text-left'>
+                  {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                  <div className='text-xs text-gray-500'>{slot.date}</div>
+                </div>
+
+                {isSelected && (
+                  <div className='flex justify-end ml-2'>
+                    <div className='w-4 h-4 sm:w-5 sm:h-5 bg-[#25388C] rounded-full flex items-center justify-center shadow-md flex-shrink-0'>
+                      <Check className='w-2.5 h-2.5 sm:w-3 sm:h-3 text-white' />
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   if (!isOpen) return null;
@@ -942,7 +981,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                     Your booking will expire in:
                   </p>
                   <p className='text-3xl font-bold text-red-600'>
-                    {formatTime(timeLeft)}
+                    {formatTimeDisplay(timeLeft)}
                   </p>
                   <p className='text-sm text-yellow-800'>
                     Please confirm your booking within the time limit
@@ -977,38 +1016,32 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                     </h4>
                     <p>
                       <span className='text-gray-500'>Service:</span>{" "}
-                      {
-                        services.filter((s) => s.id === bookingData.service)[0]
-                          .name
-                      }{" "}
+                      {services.find((s) => s.id === bookingData.service)?.name}{" "}
                       -{" "}
                       {
-                        subServices.filter(
-                          (s) => s.id === bookingData.subService
-                        )[0].name
+                        subServices.find((s) => s.id === bookingData.subService)
+                          ?.name
                       }
                     </p>
                     <p>
                       <span className='text-gray-500'>Location:</span>{" "}
-                      {areas.filter((a) => a.id === bookingData.area)[0].name},{" "}
+                      {areas.find((a) => a.id === bookingData.area)?.name},{" "}
                       {
-                        districts.filter(
-                          (a) => a.id === bookingData.district
-                        )[0].name
+                        districts.find((a) => a.id === bookingData.district)
+                          ?.name
                       }
                     </p>
                     <p>
                       <span className='text-gray-500'>Property:</span>{" "}
                       {
-                        properties.filter(
-                          (a) => a.id === bookingData.property
-                        )[0].name
+                        properties.find((a) => a.id === bookingData.property)
+                          ?.name
                       }{" "}
                       -{" "}
                       {
-                        residenceTypes.filter(
+                        residenceTypes.find(
                           (a) => a.id === bookingData.residenceType
-                        )[0].type
+                        )?.type
                       }
                     </p>
                   </div>
@@ -1036,12 +1069,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                     </p>
                     <p>
                       <span className='text-gray-500'>Bundle:</span>{" "}
-                      {bookingData.bundle
-                        ?.split("bundle-")[1]
-                        ?.split("-gap")[0]
-                        ?.replaceAll("-", ", ")}
+                      {selectedBundleDetail?.dayCombination?.join(", ")}
                     </p>
-                    <p>{bookingData.timeSlot}</p>
                   </div>
 
                   <div className='bg-gray-50 p-3 rounded-lg'>
@@ -1096,23 +1125,30 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                           <label className='block font-medium text-gray-700'>
                             Select Existing Customer
                           </label>
-                          <Combobox value={selectedUserId} onChange={(userId) => {
-                            setSelectedUserId(userId);
-                            const selectedUser = users.find((u) => u.id === userId);
-                            if (selectedUser) {
-                              setBookingData((prev) => ({
-                                ...prev,
-                                userName: selectedUser.name,
-                                phoneNumber: selectedUser.phone,
-                                email: selectedUser.email,
-                              }));
-                              setFinalBookingData((prev) => ({
-                                ...prev,
-                                userId: selectedUser.id,
-                                userPhone: `%2b${selectedUser.phone.replace(/\D/g, "")}`,
-                              }));
-                            }
-                          }}>
+                          <Combobox
+                            value={selectedUserId}
+                            onChange={(userId) => {
+                              setSelectedUserId(userId);
+                              const selectedUser = users.find(
+                                (u) => u.id === userId
+                              );
+                              if (selectedUser) {
+                                setBookingData((prev) => ({
+                                  ...prev,
+                                  userName: selectedUser.name,
+                                  phoneNumber: selectedUser.phone,
+                                  email: selectedUser.email,
+                                }));
+                                setFinalBookingData((prev) => ({
+                                  ...prev,
+                                  userId: selectedUser.id,
+                                  userPhone: `%2b${selectedUser.phone.replace(
+                                    /\D/g,
+                                    ""
+                                  )}`,
+                                }));
+                              }
+                            }}>
                             <Combobox.Input
                               onChange={(e) => setQuery(e.target.value)}
                               displayValue={(userId) => {
@@ -1120,12 +1156,15 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                                 return u ? `${u.name} - ${u.phone}` : "";
                               }}
                               className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                              placeholder="Select a customer"
+                              placeholder='Select a customer'
                               required
                             />
-                            <Combobox.Options className="absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg">
+                            <Combobox.Options className='absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg'>
                               {filteredUsers.map((user) => (
-                                <Combobox.Option key={user.id} value={user.id} className="cursor-pointer px-4 py-2 hover:bg-gray-100">
+                                <Combobox.Option
+                                  key={user.id}
+                                  value={user.id}
+                                  className='cursor-pointer px-4 py-2 hover:bg-gray-100'>
                                   {user.name} - {user.phone}
                                 </Combobox.Option>
                               ))}
@@ -1630,30 +1669,61 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
 
                     {bundles.length > 0 ? (
                       <div className='grid grid-cols-1 gap-3'>
-                        {bundles[0].bundles.map((bundle: any) => (
+                        <div className='text-xs text-gray-500 mb-2'>
+                          Debug: Found {bundles.length} bundles
+                        </div>
+                        {bundles.map((bundle: any) => (
                           <div
-                            key={bundle.id}
+                            key={bundle.bundleId}
                             className={`p-4 border rounded-lg cursor-pointer transition ${
-                              bookingData.bundle === bundle.id
+                              bookingData.bundle === bundle.bundleId
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-300 hover:border-blue-300"
                             }`}
                             onClick={() => {
                               setBookingData((prev) => ({
                                 ...prev,
-                                bundle: bundle.id,
+                                bundle: bundle.bundleId,
+                              }));
+
+                              // Use the bundle data directly (no teams structure)
+                              const foundBundleDetail = {
+                                bundleId: bundle.bundleId,
+                                dayCombination: bundle.dayCombination || [],
+                                booking: bundle.booking || [],
+                                renewableSlots: bundle.renewableSlots || [],
+                              };
+
+                              // Get teamId from first booking entry
+                              const foundTeamId =
+                                bundle.booking?.[0]?.teamId || null;
+
+                              console.log(
+                                "Selected bundle detail:",
+                                foundBundleDetail
+                              );
+                              console.log("Team ID:", foundTeamId);
+
+                              setSelectedBundleDetail(foundBundleDetail);
+                              setSelectedTeamId(foundTeamId);
+                              setFinalBookingData((prev) => ({
+                                ...prev,
+                                teamId: foundTeamId,
                               }));
                             }}>
                             <div className='flex justify-between items-center'>
                               <div>
                                 <h4 className='font-medium text-gray-900'>
-                                  {bundle.title}
+                                  {bundle.dayCombination?.join(", ") ||
+                                    "No days specified"}
                                 </h4>
-                                {/* <p className='text-gray-600'>
-                                  {bundle.duration} mins
-                                </p> */}
+                                <p className='text-xs text-gray-500'>
+                                  Booking slots: {bundle.booking?.length || 0} |
+                                  Renewal slots:{" "}
+                                  {bundle.renewableSlots?.length || 0}
+                                </p>
                               </div>
-                              {bookingData.bundle === bundle.id && (
+                              {bookingData.bundle === bundle.bundleId && (
                                 <div className='w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white'>
                                   ✓
                                 </div>
@@ -1672,51 +1742,58 @@ const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Step 6: Time Slot Selection */}
+                {/* Step 6: Time Slot Selection - Same as TimeSlots component */}
                 {currentStep === 6 && (
                   <div className='space-y-5'>
-                    <h3 className='text-lg font-medium text-gray-900'>
-                      Select Time Slots
-                    </h3>
+                    <div className='flex justify-between items-center mb-4'>
+                      <div>
+                        <h3 className='text-lg font-medium text-gray-900'>
+                          Select Time Slots
+                        </h3>
+                        <p className='text-sm text-gray-600'>
+                          Choose one time slot for each day of service
+                        </p>
+                      </div>
+                      <div className='bg-blue-50 px-3 py-2 rounded-lg'>
+                        <span className='text-sm font-medium text-blue-800'>
+                          {selectedTimeSlots.length} / {getSliceEndIndex()}{" "}
+                          selected
+                        </span>
+                      </div>
+                    </div>
 
-                    {timeSlots.length > 0 ? (
-                      <div className='space-y-4'>
-                        {timeSlots.slice(0, getSliceEndIndex()).map((day) => (
-                          <div
-                            key={`${day.day}-${day.date}`}
-                            className='border rounded-lg p-3'>
-                            <h4 className='font-medium text-gray-900 mb-2'>
-                              {day.day}
-                            </h4>
-                            <div className='grid grid-cols-2 gap-2'>
-                              {day.timeSlots.map((slot) => (
-                                <button
-                                  key={slot.id}
-                                  type='button'
-                                  onClick={() =>
-                                    handleTimeSlotSelection(
-                                      slot,
-                                      day.day,
-                                      day.date
-                                    )
-                                  }
-                                  className={`py-2 px-3 rounded-md text-sm font-medium transition ${
-                                    selectedSlots[day.day] === slot.id
-                                      ? "bg-blue-500 text-white"
-                                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                  }`}>
-                                  {slot.startTime} - {slot.endTime}
-                                </button>
-                              ))}
-                            </div>
+                    {selectedBundleDetail ? (
+                      <div>
+                        <p className='text-sm text-gray-600 mb-4'>
+                          Selected Bundle:{" "}
+                          {selectedBundleDetail.dayCombination?.join(", ")}
+                        </p>
+
+                        {selectedBundleDetail.booking &&
+                        selectedBundleDetail.booking.length > 0 ? (
+                          <div className='space-y-6 sm:space-y-8 px-2 sm:px-4 lg:px-0'>
+                            {selectedBundleDetail.dayCombination
+                              .slice(0, getSliceEndIndex())
+                              .map((dc: any, idx: number) =>
+                                renderTimeSlotSection(dc, dc, idx)
+                              )}
                           </div>
-                        ))}
+                        ) : (
+                          <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
+                            <p className='text-yellow-800'>
+                              No booking days found for this bundle.
+                            </p>
+                            <pre className='mt-2 text-xs text-yellow-700'>
+                              {JSON.stringify(selectedBundleDetail, null, 2)}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className='text-center py-4 text-gray-500'>
                         {isLoading
                           ? "Loading time slots..."
-                          : "No time slots available for the selected bundle"}
+                          : "Please select a bundle first"}
                       </div>
                     )}
 
@@ -1822,12 +1899,12 @@ const BookingsHeader: React.FC = () => {
             <ArrowDownTrayIcon className='w-5 h-5 mr-2' />
             Export
           </button>
-          {/* <button
+          <button
             onClick={() => setShowBookingDialog(true)}
             className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center'>
             <PlusCircleIcon className='w-5 h-5 mr-2' />
             New Booking
-          </button> */}
+          </button>
         </div>
       </div>
 

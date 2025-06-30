@@ -7,6 +7,7 @@ export default async function ConfirmBookingAction(data: {
   userAvailableInApartment?: boolean;
   specialInstructions?: string;
   appartmentNumber?: string;
+  bookingId: string;
 }) {
   const bookings = await confirmBooking(data);
   return bookings.data;

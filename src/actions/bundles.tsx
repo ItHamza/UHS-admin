@@ -4,13 +4,14 @@ import { getBundles } from "@/lib/service/bundles"; // Adjust the import path as
 
 export default async function BundlesAction(body: {
   startDate: string;
-  location: { lat: number; lng: number };
+  location: { lat: number; lng: number; district_id: string };
   frequency: string;
   servicePeriod: number;
   serviceType: string;
   duration: number;
+  serviceId: string;
 }) {
   const bundles = await getBundles(body);
 
-  return bundles;
+  return bundles.data;
 }

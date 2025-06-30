@@ -6,6 +6,7 @@ export const confirmBooking = async (data: {
   userAvailableInApartment?: boolean;
   specialInstructions?: string;
   appartmentNumber?: string;
+  bookingId?: string;
 }) => {
   return apiRequest<any>("/booking/confirm", {
     method: "POST",

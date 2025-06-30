@@ -22,7 +22,8 @@ export default async function BlockBookingAction(data: {
   specialInstructions?: string;
   appartmentNumber?: string;
   serviceId?: string;
+  renewal_slots: any[];
 }) {
   const bookings = await blockBooking(data);
-  return bookings.data.bookingId;
+  return bookings.data;
 }
