@@ -1,19 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Booking } from "@/types/booking";
 import { Clock, X, CreditCard, Calendar, MapPin, Loader2 } from "lucide-react";
-import moment from "moment";
-import CustomDatePicker from "../ui/custom-date-picker";
-import CalendarAction from "@/actions/calendar";
-import BundlesAction from "@/actions/bundles";
-import {
-  frequencyNumberMapping,
-  residenceDurationMap,
-  TimeSlot,
-} from "./BookingsHeader";
-import BlockBookingAction from "@/actions/block";
 import toast from "react-hot-toast";
-import ConfirmBookingAction from "@/actions/confirmBooking";
-import Loader from "../ui/loader";
 import { format } from "date-fns";
 import { BookingByIdAction, ConfirmRenewAction } from "@/actions/booking";
 import { Button } from "@headlessui/react";
@@ -29,12 +17,7 @@ interface RenewModalProps {
   isOpen: boolean;
   onClose: () => void;
   bookingData: Booking;
-  onRenew: (renewalDetails: {
-    months: number;
-    startDate: Date;
-    bundle: Bundle;
-    timeSlot: TimeSlot;
-  }) => void;
+  onRenew: () => void
 }
 
 interface ServiceDetail {
@@ -65,42 +48,17 @@ const RenewModal: React.FC<RenewModalProps> = ({
   bookingData,
   onRenew,
 }) => {
-  const SERVICE_DURATION = [1, 3, 6, 12];
-  const [bundles, setBundles] = useState<any[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<Record<string, string>>(
-    {}
-  );
-
-  const [step, setStep] = useState<number>(1);
-  const [months, setMonths] = useState<number | undefined>(1);
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [selectedBundle, setSelectedBundle] = useState<Bundle | undefined>(
-    undefined
-  );
-  const [selectedBundleId, setSelectedBundleId] = useState<string | null>(null);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<
-    TimeSlot | undefined
-  >(undefined);
-  const [timeslotsSelected, setTimeSlotsSelected] = useState<any>();
+  
   const [loading, setLoading] = useState(false)
 
   const [blockingTimer, setBlockingTimer] = useState<number | null>(null);
   const [isBlockingTimerActive, setIsBlockingTimerActive] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string[]>([]);
-  const [calendar, setCalendar] = useState<any[]>([]);
 
   const [services, setServices] = useState<BookingService[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   
   const [isConfirmRenew, setIsConfirmRenew] = useState(false);
 
-
-  const startBlockingTimer = () => {
-    setIsBlockingTimerActive(true);
-    setBlockingTimer(600);
-  };
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "N/A";
@@ -147,6 +105,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
         };
 
         setServices([serviceData]);
+        debugger;
         setTotalAmount(parseFloat(response.total_amount) || 0);
       } else {
         toast.error("Failed to load booking details");
@@ -175,7 +134,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
       if (response) {
 
         setIsConfirmRenew(false);
-        location.reload()
+        onRenew()
       } else {
         throw new Error("No payment URL returned");
       }
@@ -205,310 +164,10 @@ const RenewModal: React.FC<RenewModalProps> = ({
     };
   }, [isBlockingTimerActive, blockingTimer]);
 
-  const fetchBundles = async () => {
-    try {
-      setLoading(true);
-      const formattedDate = moment(startDate).format("YYYY-MM-DD");
-      const residenceSelected = bookingData.residence_type;
-
-      const duration: number =
-        residenceDurationMap[residenceSelected.type] || 60;
-
-      const propertyLocation = {
-        lat: bookingData.property.latitude,
-        lng: bookingData.property.longitude,
-      };
-
-      const payload = {
-        startDate: formattedDate,
-        location: propertyLocation,
-        frequency: bookingData.frequency,
-        servicePeriod: months || 1,
-        serviceType: residenceSelected.type || "",
-        duration: duration,
-      };
-
-      const response = await BundlesAction({
-        startDate: payload.startDate,
-        location: payload.location as { lat: any; lng: any },
-        frequency: payload.frequency,
-        servicePeriod: payload.servicePeriod,
-        duration: payload.duration,
-        serviceType: payload.serviceType,
-      });
-
-      setBundles(response.data);
-    } catch (error) {
-      console.error("Error fetching bundles:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  function filterTimeSlotsByBundleId(
-    teamsData: any,
-    bundleId: string
-  ): TimeSlot[] {
-    const filteredTimeSlots: TimeSlot[] = [];
-
-    teamsData.forEach((team: any) => {
-      team.availableBundles.forEach((bundle: any) => {
-        if (bundle.bundleId === bundleId) {
-          setSelectedTeamId(team.teamId);
-
-          bundle.bookingDays.forEach((day: any) => {
-            filteredTimeSlots.push({
-              day: day.day,
-              date: day.date,
-              timeSlots: day.timeSlots.map((slot: any) => ({
-                id: `${slot.scheduleId}_${slot.startTime}-${slot.endTime}`,
-                startTime: slot.startTime,
-                endTime: slot.endTime,
-              })),
-            });
-          });
-        }
-      });
-    });
-
-    return filteredTimeSlots;
-  }
-
-  const fetchTimeSlots = async (bundleId: string) => {
-    try {
-      setLoading(true);
-      if (!bundles || bundles.length === 0) {
-        console.error("No bundles available");
-        return;
-      }
-
-      const timeslotsRes = filterTimeSlotsByBundleId(
-        bundles[0].teams,
-        bundleId
-      );
-      setTimeSlots(timeslotsRes);
-    } catch (error) {
-      console.error("Error fetching time slots:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTimeSlotSelection = (slot: any, day: string, date: string) => {
-    let newSelections = { ...selectedSlots };
-
-    const hasExistingSelection = newSelections[day] !== undefined;
-    const isSameSlot = newSelections[day] === slot.id;
-
-    if (isSameSlot) {
-      delete newSelections[day];
-      setSelectedDay(selectedDay.filter((d) => d !== day));
-    } else {
-      newSelections[day] = slot.id;
-      if (!selectedDay.includes(day)) {
-        setSelectedDay([...selectedDay, day]);
-      }
-    }
-
-    setSelectedSlots(newSelections);
-
-    const selectedSlotsList = Object.entries(newSelections)
-      .map(([dateStr, slotId]) => {
-        const matchingDay = timeSlots.find((d) => d.day === dateStr);
-        if (!matchingDay) return "";
-
-        const matchingSlot = matchingDay.timeSlots.find((s) => s.id === slotId);
-        if (!matchingSlot) return "";
-
-        return `${matchingDay.day} - ${matchingSlot.startTime} to ${matchingSlot.endTime}`;
-      })
-      .filter(Boolean)
-      .join(", ");
-    setTimeSlotsSelected(selectedSlotsList);
-  };
-
-  const fetchCalendar = async (startDate: string, endDate: string, booking_id: string, team_id: string, user_id: string) => {
-    try {
-      setLoading(true);
-      const response = await CalendarAction(startDate, endDate, booking_id, team_id, user_id);
-      const unavailableDates = Object.entries(response.data)
-        .filter(([_, isAvailable]) => !isAvailable)
-        .map(([dateString]) => new Date(dateString));
-
-      setCalendar(unavailableDates);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching properties:", error);
-      setLoading(false);
-    }
-  };
-
-  const computeMinDate = () => {
-    return bookingData?.end_date
-      ? new Date(
-          new Date(bookingData.end_date).setDate(
-            new Date(bookingData.end_date).getDate() + 1
-          )
-        )
-      : new Date();
-  };
-
-  const computeMaxDate = () => {
-    return months
-      ? new Date(
-          new Date(bookingData?.end_date || new Date()).setMonth(
-            new Date(bookingData?.end_date || new Date()).getMonth() + months
-          )
-        )
-      : new Date(
-          new Date(bookingData?.end_date || new Date()).setMonth(
-            new Date(bookingData?.end_date || new Date()).getMonth() + 1
-          )
-        );
-  };
-
-  const blockSchedule = async () => {
-    try {
-      setLoading(true);
-      let timeslotsSelected: any[] = [];
-
-      const selectedBundleId = selectedBundle?.id;
-
-      const selectedSlotsArray = bundles[0].teams.flatMap((team: any) =>
-        team.availableBundles
-          .filter((av: any) => av.bundleId === selectedBundleId)
-          .flatMap((av: any) =>
-            Object.entries(selectedSlots).map(
-              ([day, slotInfo]: [string, any]) => {
-                const startTime = slotInfo.split("_")[1].split("-")[0];
-                const endTime = slotInfo.split("_")[1].split("-")[1];
-
-                const scheduleId = slotInfo.split("_")[0];
-                const matchingTimeSlots = av.bookingDays
-                  .filter((d: any) => d.day === day)
-                  ?.flatMap((d: any) => d.timeSlots)
-                  .filter(
-                    (slot: any) =>
-                      slot.startTime === startTime && slot.endTime === endTime
-                  );
-
-                timeslotsSelected = [
-                  ...timeslotsSelected,
-                  ...matchingTimeSlots,
-                ];
-
-                return matchingTimeSlots.map((matchSlot: any) => ({
-                  schedule_id: scheduleId,
-                  start_time: startTime,
-                  end_time: endTime,
-                  day: day,
-                }));
-              }
-            )
-          )
-          .flat()
-          .filter(Boolean)
-      );
-
-      const endDate =
-        bookingData.frequency !== "one_time"
-          ? moment(startDate).add(months, "months").format("YYYY-MM-DD")
-          : moment(bookingData.startDate).add(1, "day").format("YYYY-MM-DD");
-
-      const firstTimeslot = timeslotsSelected[0];
-      const startTime = firstTimeslot ? firstTimeslot.startTime : "00:00";
-      const endTime = firstTimeslot ? firstTimeslot.endTime : "00:00";
-
-      const formattedEndDate =
-        bookingData.frequency === "one_time"
-          ? `${endDate}T${endTime}:00`
-          : endDate;
-
-      const data: any = {
-        userPhone: bookingData.user.phone,
-        no_of_cleaners: 2,
-        userId: bookingData.user.id,
-        timeslots:
-          bookingData.frequency === "one_time"
-            ? timeslotsSelected.slice(0, 1).map((ts) => ({
-                start_time: ts.startTime + ":00",
-                end_time: ts.endTime + ":00",
-                schedule_id: ts.scheduleId,
-              }))
-            : timeslotsSelected.map((ts) => ({
-                start_time: ts.startTime + ":00",
-                end_time: ts.endTime + ":00",
-                schedule_id: ts.scheduleId,
-              })),
-        teamId: selectedTeamId,
-        areaId: bookingData.area.id,
-        districtId: bookingData.district.id,
-        propertyId: bookingData.property.id,
-        residenceTypeId: bookingData.residence_type.id,
-        startDate:
-          bookingData.frequency === "one_time"
-            ? moment(bookingData.startDate).format("YYYY-MM-DD") +
-              "T" +
-              startTime
-            : moment(bookingData.startDate).format("YYYY-MM-DD"),
-        endDate: formattedEndDate,
-        frequency: bookingData.frequency,
-        userAvailableInApartment: bookingData.user_available_in_apartment,
-        specialInstructions: bookingData.instructions,
-        appartmentNumber: bookingData.appartment_number,
-        serviceId: bookingData.service.id,
-      };
-      const bookingId = await BlockBookingAction(data);
-      startBlockingTimer();
-
-      //   console.log("block data", data, selectedSlots);
-      setLoading(false);
-    } catch (error: any) {
-      setLoading(false);
-      console.log("error", error);
-      toast.error(error.message || "something went wrong");
-    }
-  };
-
-  const handleRenew = async () => {
-    try {
-      setLoading(true);
-      const response = await ConfirmBookingAction({
-        userPhone: bookingData.user.phone,
-        specialInstructions: bookingData.instructions,
-        appartmentNumber: bookingData.appartment_number,
-        userAvailableInApartment: bookingData.user_available_in_apartment,
-      });
-      console.log("Service booked successfully:", response);
-      window.location.reload();
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const nextStep = () => {
-    setStep((prev) => prev + 1);
-    if (step === 1) {
-      fetchBundles();
-    } else if (step === 2 && selectedBundleId) {
-      fetchTimeSlots(selectedBundleId as string);
-    } else if (step === 3) {
-      blockSchedule();
-    }
-  };
-
-  const prevStep = () => setStep((prev) => prev - 1);
-
   useEffect(() => {
     fetchBookingServices(bookingData.id)
   }, []);
 
-  const getSliceEndIndex = () => {
-    return frequencyNumberMapping[bookingData.frequency] || 1;
-  };
 
   if (!isOpen) return null;
 
