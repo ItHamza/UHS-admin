@@ -42,15 +42,17 @@ const CancelModal: React.FC<{
   const handleDateSelection = (date: string) => {
     setSelectedDate(date);
   };
-
   const handleCancel = async () => {
     try {
       setLoading(true);
-      const cancel = selectedDate
-        ? await CancelSingleBookingAction(selectedDate)
-        : CancelBookingAction(booking.id);
-      window.location.reload();
+      if (selectedDate) {
+        await CancelSingleBookingAction(selectedDate);
+      } else {
+        await CancelBookingAction(booking.id);
+      }
+
       onClose();
+      setTimeout(() => window.location.reload(), 100); // Optional delay
     } catch (error: any) {
       toast.error(error.message);
     } finally {
