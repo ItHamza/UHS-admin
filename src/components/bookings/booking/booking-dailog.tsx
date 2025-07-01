@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { Check, X } from "lucide-react"
 import toast from "react-hot-toast"
 
 import type { BookingData, FinalBookingData, User, ServiceOption, LocationOption, Bundle } from "@/types/new-booking"
@@ -27,6 +27,7 @@ import PricingAction from "@/actions/pricing"
 import { BookingConfirmation } from "./booking-confirmation"
 import { BundleSelection } from "./bundle-selection"
 import { TimeSlotSelection } from "./time-slot-selection"
+import { DeepBookingAction, SpecialisedBookingAction } from "@/actions/booking"
 
 interface BookingDialogProps {
   isOpen: boolean
@@ -62,6 +63,7 @@ const initialBookingData: BookingData = {
 const initialFinalBookingData: FinalBookingData = {
   userPhone: "",
   no_of_cleaners: 2,
+  cleaning_supplies: true,
   userId: "",
   timeslots: [],
   teamId: "",
@@ -318,14 +320,6 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
         .add(Number.parseInt(bookingData.duration) || 1, "months")
         .format("YYYY-MM-DD")
 
-      const pricingResponse = await PricingAction()
-      const match = pricingResponse.find(
-        (p: any) =>
-          p.frequency.includes(bookingData.frequency) &&
-          p.service?.parent_id === bookingData.service &&
-          p.residence_type_id === bookingData.residenceType,
-      )
-
       setFinalBookingData((prev) => ({
         ...prev,
         propertyId: bookingData.property,
@@ -333,7 +327,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
         startDate: formattedDate,
         endDate: endDate,
         frequency: bookingData.frequency,
-        total_amount: Number(match?.total_amount || 0),
+        // total_amount: Number(match?.total_amount || 0),
       }))
 
       const response = await BundlesAction({
@@ -359,6 +353,22 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchPricing = async () => {
+    const pricingResponse = await PricingAction()
+      const match = pricingResponse.find(
+        (p: any) =>
+          p.frequency.includes(bookingData.frequency) &&
+          p.service?.parent_id === bookingData.service &&
+          p.residence_type_id === bookingData.residenceType,
+      )
+      setFinalBookingData((prev) => ({
+        ...prev,
+        total_amount: Number(match?.total_amount || 0),
+        no_of_cleaners: match.service?.no_of_cleaners,
+        cleaning_supplies: match.service?.cleaning_supply_included
+      }))
   }
 
   // Time slot selection logic
@@ -503,6 +513,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
 
       // Skip steps 5 & 6 for non-regular services
       if (currentStep === 4 && !isRegularService) {
+        fetchPricing()
         setCurrentStep(7) // Jump to confirmation
       } else {
         setCurrentStep((prev) => prev + 1)
@@ -594,9 +605,65 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
 
         setBookingId(blockData?.booking?.id)
         setShowSummary(true)
+      } else if (bookingData.selectedSubServiceName.toLowerCase().includes("deep")) {
+        console.log("deep", bookingData)
+        const deepBooking = await DeepBookingAction({
+          date: bookingData.startDate,
+          recurrence_plan: "one_time",
+          end_date: bookingData.startDate, // Default to same day if not provided
+          user_id: selectedUserId ?? "",
+          team_id: null,
+          appartment_number: bookingData.apartmentNumber,
+          service_id: bookingData.subService,
+          area_id: bookingData.area,
+          district_id: bookingData.district,
+          property_id: bookingData.property,
+          residence_type_id: bookingData.residenceType,
+          special_instructions: bookingData.specialInstructions || "",
+          status: "pending",
+          payment_status: "unpaid",
+          currency: 'QAR',
+          user_available_in_apartment: bookingData.userPresent || false,
+          
+          total_amount: finalBookingData.total_amount,
+          no_of_cleaners: finalBookingData.no_of_cleaners,
+          cleaning_supplies: finalBookingData.cleaning_supplies,
+          team_availability_ids: [], // Empty for deep cleaning/specialized services
+          current_team_availability_id: null, // Not needed for these services
+          is_renewed: false,
+          has_renewed: false,
+        })
+
+        setBookingId(deepBooking?.booking?.id)
+        toast.success("Deep Cleaning Booking created successfully!")
+        window.location.reload()
       } else {
+        const specialiseBooking = await SpecialisedBookingAction({
+          date: bookingData.startDate ,
+          end_date: bookingData.startDate ,
+          recurrence_plan: 'one_time',
+          user_id: selectedUserId ?? "",
+          service_id: bookingData.service,
+          area_id: bookingData.area,
+          district_id: bookingData.district,
+          property_id: bookingData.property,
+          residence_type_id: bookingData.residenceType,
+          special_instructions: bookingData.specialInstructions,
+          user_available_in_apartment: bookingData.userPresent,
+          appartment_number: bookingData.apartmentNumber,
+          total_amount: calculateSpecializedTotal(),
+          no_of_cleaners: finalBookingData.no_of_cleaners,
+          cleaning_supply_included: true,
+          currency: 'QAR',
+          booking_items: bookingData.selectedSpecializedSubCategories.map((item) => ({
+            sub_service_item_id: item.id,
+            quantity: item.quantity,
+          })),
+        })
+
+        console.log("specialise", specialiseBooking)
         // Direct booking for other services
-        toast.success("Booking created successfully!")
+        toast.success("Specialise Booking created successfully!")
         window.location.reload()
       }
     } catch (error: any) {
@@ -605,6 +672,13 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const calculateSpecializedTotal = () => {
+    return bookingData.selectedSpecializedSubCategories.reduce(
+      (total, item) => total + Number(item.price_per_unit) * item.quantity,
+      0,
+    )
   }
 
   const handleConfirmBooking = async () => {
@@ -932,21 +1006,61 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
                 {currentStep === 1 ? "Cancel" : "Back"}
               </button>
 
-              <button
-                onClick={handleNext}
-                disabled={isNextButtonDisabled()}
-                className={`px-6 py-2 flex items-center gap-2 bg-blue-600 text-white rounded-lg transition ${
-                  isNextButtonDisabled() ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
-                }`}
-              >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : currentStep === totalSteps ? (
-                  "Create Booking"
+              {currentStep !== totalSteps ? (
+                <button
+                  onClick={handleNext}
+                  disabled={isNextButtonDisabled()}
+                  className={`px-6 py-2 flex items-center gap-2 bg-blue-600 text-white rounded-lg transition ${
+                    isNextButtonDisabled() ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
+                  }`}
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    "Next"
+                  )}
+                </button>
+                ) : isRegularService ? (
+                <button
+                  onClick={handleCreateBooking}
+                  disabled={isLoading}
+                  className={`bg-green-600 text-white px-6 py-2 flex items-center gap-2 rounded-lg transition ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Blocking Schedule...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-5 h-5 mr-2" />
+                      Block Schedule
+                    </>
+                  )}
+                </button>
                 ) : (
-                  "Next"
+                <button
+                  onClick={handleCreateBooking}
+                  disabled={isLoading}
+                  className={`bg-green-600 text-white px-6 py-2 flex items-center gap-2 rounded-lg transition ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Creating Booking...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-5 h-5 mr-2" />
+                      Confirm & Create Booking
+                    </>
+                  )}
+                </button>
                 )}
-              </button>
             </div>
           )}
         </div>

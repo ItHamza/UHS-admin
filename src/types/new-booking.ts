@@ -44,11 +44,13 @@ export interface SpecializedSubCategory {
   price_per_unit?: number
   currency?: string
   category?: string
+  no_of_cleaners: number
 }
 
 export interface FinalBookingData {
   userPhone: string
   no_of_cleaners: number
+  cleaning_supplies: boolean
   userId: string
   timeslots: TimeSlot[]
   teamId: string

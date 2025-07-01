@@ -1,5 +1,5 @@
 "use server";
-import { getBookingById, getBookings, renewBooking } from "@/lib/service/booking";
+import { deepBooking, getBookingById, getBookings, renewBooking, specialiseBooking } from "@/lib/service/booking";
 
 export default async function BookingAction() {
   const bookings = await getBookings();
@@ -14,4 +14,14 @@ export async function BookingByIdAction(id: string) {
 export async function ConfirmRenewAction(id: string, data: any) {
   const renewResponse = await renewBooking(id, data);
   return renewResponse.data;
+}
+
+export async function SpecialisedBookingAction(data: any) {
+  const booking = await specialiseBooking(data);
+  return booking.data;
+}
+
+export async function DeepBookingAction(data: any) {
+  const booking = await deepBooking(data);
+  return booking.data;
 }

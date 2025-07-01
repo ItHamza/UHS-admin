@@ -283,7 +283,7 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             {isDeepService && (
               <div className="flex justify-between text-lg font-semibold">
                 <span>Service Fee:</span>
-                <span className="text-blue-600">To be confirmed</span>
+                <span className="text-blue-600">QAR {finalBookingData.total_amount.toFixed(2)}</span>
               </div>
             )}
           </div>
@@ -317,29 +317,6 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             {isSpecialService && <li>• Specialized cleaning may require additional time based on the condition</li>}
           </ul>
         </div>
-      </div>
-
-      {/* Confirmation Button */}
-      <div className="pt-4">
-        <button
-          onClick={onConfirm}
-          disabled={isLoading}
-          className={`w-full py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold text-lg shadow-lg flex items-center justify-center ${
-            isLoading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          {isLoading ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              Creating Booking...
-            </>
-          ) : (
-            <>
-              <Check className="w-5 h-5 mr-2" />
-              Confirm & Create Booking
-            </>
-          )}
-        </button>
       </div>
     </div>
   )
