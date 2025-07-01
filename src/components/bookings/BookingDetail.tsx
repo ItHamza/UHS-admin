@@ -1,244 +1,300 @@
 import React, { useState } from "react";
-import BookingDetailHeader from "./BookingDetailHeader";
-import { Booking } from "@/types/booking";
+import { Booking } from "@/types/booking"
+import { Dialog } from "@headlessui/react"
 import {
-  BuildingIcon,
-  LayoutGridIcon,
+  XMarkIcon,
+  CalendarIcon,
+  ClockIcon,
+  UserGroupIcon,
   MapPinIcon,
-  UsersIcon,
-} from "lucide-react";
-import { formatTime } from "@/utils/format-time";
+  BuildingOfficeIcon,
+  CurrencyDollarIcon,
+  PhoneIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/24/outline"
 import RescheduleModal from "./RescheduleDialog";
 import RenewModal from "./RenewDialog";
 import CancelModal from "./CancelModal";
-
 interface BookingDetailProps {
-  booking: Booking;
-  onClose: () => void;
+  booking: Booking
+  onClose: () => void
+  formatTime: (time: string) => string
+  formatDate: (date: string) => string
+  formatCurrency: (amount: number, currency?: string) => string
+  getStatusColor: (status: string) => string
 }
 
-const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onClose }) => {
+const BookingDetail: React.FC<BookingDetailProps> = ({
+  booking,
+  onClose,
+  formatTime,
+  formatDate,
+  formatCurrency,
+  getStatusColor,
+}) => {
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
   return (
     <>
-      <BookingDetailHeader booking={booking} onClose={onClose} />
-
-      <div className='flex-1 overflow-y-auto py-6 px-6'>
-        <div className='flex-1 overflow-y-auto '>
-          <div className='mb-6'>
-            <h3 className='text-lg font-medium text-gray-900 mb-2'>
-              Customer Information
-            </h3>
-            <div className='bg-gray-50 p-4 rounded-lg'>
-              <div className='flex items-center mb-3'>
-                <div className='bg-indigo-100 rounded-full h-10 w-10 flex items-center justify-center mr-3'>
-                  <span className='text-indigo-800 font-medium'>
-                    {booking.customer.charAt(0)}
-                  </span>
-                </div>
-                <div>
-                  <h4 className='text-md font-medium'>{booking.customer}</h4>
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-600`}>
-                    {booking.service?.name?.replace("_", " ")}
-                  </span>
-                </div>
-              </div>
-              <div className='text-sm space-y-2'>
-                <div className='flex items-center text-gray-700'>
-                  <MapPinIcon className='mr-2 h-5 w-5 text-gray-500' />
-                  <div>
-                    <span className='font-medium'>
-                      Apt {booking.appartment_number},{" "}
-                    </span>
-                    <span>{booking.residence_type?.type}</span>
-                  </div>
-                </div>
-                <div className='flex items-center text-gray-700'>
-                  <BuildingIcon className='mr-2 h-5 w-5 text-gray-500' />
-                  <span>{booking.property?.name}</span>
-                </div>
-                <div className='flex items-center text-gray-700'>
-                  <LayoutGridIcon className='mr-2 h-5 w-5 text-gray-500' />
-                  <span>
-                    {booking.district?.name}, {booking.area?.name}
-                  </span>
-                </div>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="h-12 w-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+                <span className="text-xl font-bold text-white">{booking.customer.charAt(0).toUpperCase()}</span>
               </div>
             </div>
+            <div className="ml-4">
+              <Dialog.Title className="text-xl font-semibold text-white">{booking.customer}</Dialog.Title>
+              <p className="text-indigo-100">Booking #{booking.booking_number}</p>
+            </div>
           </div>
+          <div className="flex items-center space-x-3">
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border bg-white ${getStatusColor(
+                booking.status,
+              )}`}
+            >
+              {booking.status.charAt(0).toUpperCase() + booking.status.replaceAll("_", " ").slice(1)}
+            </span>
+            <button
+              type="button"
+              className="rounded-md bg-white bg-opacity-20 p-2 text-white hover:bg-opacity-30 focus:outline-none focus:ring-2 focus:ring-white"
+              onClick={onClose}
+            >
+              <XMarkIcon className="h-6 w-6 text-black" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-          <div className='mb-6'>
-            <h3 className='text-lg font-medium text-gray-900 mb-2'>
-              Service Details
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 space-y-6">
+          {/* Customer Information */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <UserGroupIcon className="h-5 w-5 mr-2 text-gray-500" />
+              Customer Information
             </h3>
-            <div className='bg-gray-50 p-4 rounded-lg'>
-              <div className='grid grid-cols-2 gap-4 mb-4'>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <MapPinIcon className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className='text-sm text-gray-500'>Service Type</p>
-                  <p className='font-medium'>{booking.service?.name}</p>
-                </div>
-              </div>
-              <div className='grid grid-cols-2 gap-4'>
-                <div>
-                  <p className='text-sm text-gray-500'>Start Date</p>
-                  <p className='font-medium'>{formatDate(booking.date)}</p>
-                </div>
-                <div>
-                  <p className='text-sm text-gray-500'>End Date</p>
-                  <p className='font-medium'>{formatDate(booking.end_date)}</p>
-                </div>
-              </div>
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='mt-4'>
-                  <p className='text-sm text-gray-500'>Timeslots</p>
-                  <p className='font-medium'>{booking.duration}</p>
-                </div>
-                <div className='mt-4'>
-                  <p className='text-sm text-gray-500'>Total Price</p>
-                  <p className='font-medium'>
-                    {booking.currency} {booking.total_amount}
+                  <p className="text-sm font-medium text-gray-900">Address</p>
+                  <p className="text-sm text-gray-600">
+                    Apt {booking.appartment_number}, {booking.residence_type?.type}
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className='mb-6'>
-            <h3 className='text-lg font-medium text-gray-900 mb-2'>
-              Team Members
-            </h3>
-            <div className='bg-gray-50 p-4 rounded-lg'>
-              <div className='flex items-center mb-3'>
-                <UsersIcon className='mr-2 h-6 w-6 text-gray-600' />
-                <h4 className='text-md font-medium'>{booking.team?.name}</h4>
+              <div className="flex items-center space-x-3">
+                <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Property</p>
+                  <p className="text-sm text-gray-600">{booking.property?.name}</p>
+                </div>
               </div>
-              {booking.team?.Users && (
-                <ul className='divide-y divide-gray-200'>
-                  {booking.team?.Users.map((member: any, index: number) => (
-                    <li key={index} className='py-2 flex items-center'>
-                      <div className='bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center mr-3'>
-                        <span className='text-gray-600 font-medium text-sm'>
-                          {member.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div className='flex items-center flex-col'>
-                        <span>{member.name}</span>
-                        <span>{member.phone}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="flex items-center space-x-3">
+                <MapPinIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Location</p>
+                  <p className="text-sm text-gray-600">
+                    {booking.district?.name}, {booking.area?.name}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Total Amount</p>
+                  <p className="text-sm text-gray-600">{formatCurrency(booking.total_amount, booking.currency)}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className='mb-6'>
-            <div className='bg-gray-50 p-4 rounded-lg'>
+          {/* Service Details */}
+          <div className="bg-blue-50 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <CalendarIcon className="h-5 w-5 mr-2 text-blue-500" />
+              Service Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className='text-sm font-medium text-gray-700 mb-2'>
-                  Special Requests
-                </h4>
-                <p className='text-sm text-gray-800 bg-white p-3 rounded border border-gray-200'>
-                  {booking.instructions || "No special requests."}
+                <p className="text-sm font-medium text-gray-900">Service Type</p>
+                <p className="text-sm text-gray-600 mt-1">{booking.service?.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Frequency</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {booking.frequency.charAt(0).toUpperCase() + booking.frequency.slice(1)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Duration</p>
+                <p className="text-sm text-gray-600 mt-1">{booking.duration}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Period</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {formatDate(booking.date)} - {formatDate(booking.end_date)}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className='mb-6'>
-            <h3 className='text-lg font-medium text-gray-900 mb-2'>
+          {/* Team Information */}
+          {booking.team && (
+            <div className="bg-green-50 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <UserGroupIcon className="h-5 w-5 mr-2 text-green-500" />
+                Team Information
+              </h3>
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-900">{booking.team.name}</p>
+                <p className="text-sm text-gray-600">Team ID: {booking.team.team_number}</p>
+              </div>
+              {booking.team.Users && booking.team.Users.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-900">Team Members</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {booking.team.Users.map((member: any, index: number) => (
+                      <div key={index} className="flex items-center space-x-3 bg-white rounded-lg p-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                            <span className="text-sm font-medium text-green-800">
+                              {member.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
+                          {member.phone && (
+                            <div className="flex items-center mt-1">
+                              <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
+                              <p className="text-xs text-gray-600">{member.phone}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Service Schedule */}
+          <div className="bg-purple-50 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <ClockIcon className="h-5 w-5 mr-2 text-purple-500" />
               Service Schedule
             </h3>
-            <div className='bg-gray-50 p-4 rounded-lg'>
-              {Array.isArray(booking?.services) && booking.services.length > 0 ? (
-                <div className='divide-y divide-gray-200'>
-                  {booking.services.map((service: any, index: number) => (
-                    <div key={index} className='py-3 grid grid-cols-3 gap-4'>
-                      <div>
-                        <p className='text-sm text-gray-500'>Date</p>
-                        <p className='font-medium'>
-                          {formatDate(service.date)}
-                        </p>
+            {Array.isArray(booking?.services.data) && booking.services.data.length > 0 ? (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  {booking.services.data.length} service{booking.services.data.length > 1 ? "s" : ""} scheduled
+                </p>
+                <div className="grid grid-cols-1 gap-4">
+                  {booking.services.data.map((service: any, index: number) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg border border-purple-200 p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-sm font-medium text-purple-800">{index + 1}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              {service.status && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}
+                                >
+                                  {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className='text-sm text-gray-500'>Start Time</p>
-                        <p className='font-medium'>
-                          {formatTime(service.start_time)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className='text-sm text-gray-500'>End Time</p>
-                        <p className='font-medium'>
-                          {formatTime(service.end_time)}
-                        </p>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{formatDate(service.date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Start Time</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{formatTime(service.start_time)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">End Time</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{formatTime(service.end_time)}</p>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className='text-gray-500'>No service dates scheduled.</p>
-              )}
-            </div>
-          </div>
-          <div className='mt-6 flex gap-4 '>
-      
-            {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming") && (
-              <>
-                {booking.has_renewed ? (
-                  <button
-                    disabled
-                    className='flex-1 h-10 bg-green-100 text-green-700 border border-green-300 rounded-lg text-sm font-medium shadow-sm cursor-not-allowed'>
-                    Renewed
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setIsRenewModalOpen(true)}
-                    className='flex-1 h-10 bg-green-600 hover:bg-green-700 text-white border border-green-700 rounded-lg text-sm font-medium shadow-sm transition'>
-                    Renew
-                  </button>
-                )}
-
-
-                <button
-                  onClick={() => setIsRescheduleModalOpen(true)}
-                  className='flex-1 h-10 bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'>
-                  Reschedule
-                </button>
-              </>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-sm text-gray-500">No service dates scheduled yet.</p>
+              </div>
             )}
-            {/* {booking.status === "completed" && (
-              <button className='flex-1 bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'>
-                Create Invoice
-              </button>
-            )} */}
-            {booking.status !== "cancelled" &&
-              booking.status !== "completed" && (
+          </div>
+
+          {/* Special Instructions */}
+          {booking.instructions && (
+            <div className="bg-amber-50 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <InformationCircleIcon className="h-5 w-5 mr-2 text-amber-500" />
+                Special Instructions
+              </h3>
+              <div className="bg-white rounded-lg border border-amber-200 p-4">
+                <p className="text-sm text-gray-700">{booking.instructions}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming") && (
+                <>
+                  {booking.has_renewed ? (
+                    <button
+                      disabled
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 cursor-not-allowed"
+                    >
+                      Already Renewed
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsRenewModalOpen(true)}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                      Renew Booking
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsRescheduleModalOpen(true)}
+                    className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    Reschedule
+                  </button>
+                </>
+              )}
+              {booking.status !== "cancelled" && booking.status !== "completed" && (
                 <button
                   onClick={() => setIsCancelModalOpen(true)}
-                  className='flex-1 h-10 bg-red-50 py-2 px-4 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'>
-                  Cancel
+                  className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                  Cancel Booking
                 </button>
               )}
+            </div>
           </div>
         </div>
       </div>

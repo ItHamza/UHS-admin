@@ -137,6 +137,7 @@ export default function PricingManagementRedesigned() {
     category: "sofa",
     sub_category: "",
     price_per_unit: "",
+    time_duration_in_minutes: 0,
     currency: "QAR",
     description: "",
     parent_id: "",
@@ -333,6 +334,7 @@ export default function PricingManagementRedesigned() {
       category: "sofa",
       sub_category: "",
       price_per_unit: "",
+      time_duration_in_minutes: 0,
       currency: "QAR",
       description: "",
       parent_id: ""
@@ -476,7 +478,8 @@ export default function PricingManagementRedesigned() {
       !specialPricingForm.name ||
       !specialPricingForm.category ||
       !specialPricingForm.sub_category ||
-      !specialPricingForm.price_per_unit
+      !specialPricingForm.price_per_unit ||
+      !specialPricingForm.time_duration_in_minutes
     ) {
       toast.error("All fields are required")
       return
@@ -560,7 +563,8 @@ export default function PricingManagementRedesigned() {
       name: pricing.name,
       category: pricing.category as SpecialPricingCategory,
       sub_category: pricing.sub_category,
-      price_per_unit: pricing.price_per_unit,
+      price_per_unit: pricing.price_per_unit || '0',
+      time_duration_in_minutes: pricing.time_duration_in_minutes || 0,
       currency: "QAR",
       description: pricing.description,
       parent_id: pricing.service?.parent_id ?? ""
@@ -1003,6 +1007,9 @@ export default function PricingManagementRedesigned() {
                                   Service Type
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Duration (minutes)
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                   Pricing
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1026,6 +1033,13 @@ export default function PricingManagementRedesigned() {
                                     <div className="flex items-center">
                                       <HomeIcon className="h-4 w-4 text-gray-400 mr-2" />
                                       <span className="text-sm text-gray-900">{rule.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {rule.time_duration_in_minutes} {'min'}
+                                      </div>
                                     </div>
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap">
@@ -1555,7 +1569,7 @@ export default function PricingManagementRedesigned() {
                             }))
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="270"
+                          placeholder="sofa"
                           min="0"
                         />
                       </div>
@@ -1574,7 +1588,7 @@ export default function PricingManagementRedesigned() {
                           }))
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="270"
+                        placeholder="Chairs"
                         min="0"
                       />
                     </div>
@@ -1607,7 +1621,20 @@ export default function PricingManagementRedesigned() {
                             </option>
                           ))}
                         </select>
-
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Time Duration (minutes)</label>
+                        <input
+                          type="number"
+                          value={specialPricingForm.time_duration_in_minutes}
+                          onChange={(e) => setSpecialPricingForm((prev) => ({ ...prev, time_duration_in_minutes: Number(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="25"
+                          min="1"
+                          step="1"
+                        />
                       </div>
                     </div>
                   </div>
