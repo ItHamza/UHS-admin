@@ -17,6 +17,7 @@ export default async function BlockBookingAction(data: {
   residenceTypeId: string;
   startDate: string;
   endDate: string;
+  total_amount: number;
   frequency: string;
   userAvailableInApartment?: boolean;
   specialInstructions?: string;

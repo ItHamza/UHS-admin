@@ -5,6 +5,7 @@ import { Tab } from "@headlessui/react"
 import BookingsHeader from "./BookingsHeader"
 import BookingsList from "./BookingsList"
 import OneTimeServicesAssignment from "./OneTimeAssignmnet"
+import NewBookingsHeader from "./NewBookingHeader"
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ")
@@ -18,7 +19,7 @@ export default function BookingsContentEnhanced() {
 
   return (
     <div className="space-y-6 p-4 lg:p-6">
-      <BookingsHeader />
+      <NewBookingsHeader />
 
       <div className="w-full">
         <Tab.Group>

@@ -18,6 +18,7 @@ export const blockBooking = async (data: {
   startDate: string;
   endDate: string;
   frequency: string;
+  total_amount: number;
   userAvailableInApartment?: boolean;
   specialInstructions?: string;
   appartmentNumber?: string;
