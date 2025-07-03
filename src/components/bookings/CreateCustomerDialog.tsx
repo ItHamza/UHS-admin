@@ -181,6 +181,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       const newUser = await UserCreateAction({
         name: bookingData.userName,
         phone: bookingData.phoneNumber,
+        whatsapp_number: bookingData.phoneNumber,
         email: bookingData.email,
         is_active: true,
         is_blocked: false,

@@ -76,6 +76,8 @@ const initialFinalBookingData: FinalBookingData = {
   endDate: "",
   frequency: "",
   renewal_slots: [],
+  status: "",
+  payment_status: ""
 }
 
 export const frequencyNumberMapping: Record<string, number> = {
@@ -458,6 +460,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
       const newUser = await UserCreateAction({
         name: bookingData.userName,
         phone: bookingData.phoneNumber,
+        whatsapp_number: bookingData.phoneNumber,
         email: bookingData.email,
         is_active: true,
         is_blocked: false,
@@ -509,6 +512,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
 
       if (currentStep === 4 && isRegularService && bookingData.startDate && bookingData.frequency) {
           await fetchBundles();
+          fetchPricing()
         } 
 
       // Skip steps 5 & 6 for non-regular services
@@ -601,6 +605,8 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
           appartmentNumber: bookingData.apartmentNumber,
           serviceId: bookingData.subService,
           renewal_slots: finalBookingData.renewal_slots,
+          status: "pending",
+          payment_status: "unpaid",
         })
 
         setBookingId(blockData?.booking?.id)

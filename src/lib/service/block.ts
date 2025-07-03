@@ -24,6 +24,8 @@ export const blockBooking = async (data: {
   appartmentNumber?: string;
   serviceId?: string;
   renewal_slots: any[];
+  status: string;
+  payment_status: string
 }) => {
   return apiRequest<any>("/booking/block", {
     method: "POST",

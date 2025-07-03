@@ -63,6 +63,8 @@ export interface FinalBookingData {
   endDate: string
   frequency: string
   renewal_slots: TimeSlot[]
+  status: string
+  payment_status: string
 }
 
 export interface TimeSlot {
