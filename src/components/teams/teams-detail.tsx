@@ -71,7 +71,7 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
       totalProperties,
       totalResidenceTypes,
       offDays,
-      schedulesCount: team.team_summary?.schedules_count || 0,
+      schedulesCount: team.service_count || 0,
       totalWorkHours: team.schedule_config?.total_work_hours || 0,
     }
   }
@@ -275,7 +275,7 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">{stats.schedulesCount}</div>
-                  <div className="text-sm text-purple-700">Active Schedules</div>
+                  <div className="text-sm text-purple-700">Scheduled Bookings</div>
                 </div>
               </div>
             </div>
@@ -353,16 +353,12 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
             {/* Location Summary */}
             {team.location_summary && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-3">Location Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <h3 className="font-semibold text-center text-blue-900 mb-3">Location Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                   
                   <div className="text-center">
                     <div className="text-lg font-bold text-green-600">{stats.totalDistricts}</div>
                     <div className="text-xs text-green-700">Districts</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-purple-600">{stats.totalProperties}</div>
-                    <div className="text-xs text-purple-700">Properties</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-bold text-orange-600">{stats.totalResidenceTypes}</div>
@@ -559,7 +555,7 @@ const TeamsDetail: React.FC<TeamsDetailProps> = ({ team, onClose, onEdit }) => {
                 )}
                 <p>• Started on: {formatDate(team.start_date)}</p>
                 <p>• Team created: {formatDate(team.created_at)}</p>
-                {team.team_summary && <p>• Active schedules: {team.team_summary.schedules_count}</p>}
+                <p>• Scheduled bookings: {team.service_count}</p>
               </div>
             </div>
           </div>

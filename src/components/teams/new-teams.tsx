@@ -116,6 +116,8 @@ export default function TeamCreationModal() {
   const [residenceTypes, setResidenceTypes] = useState<ResidenceType[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [teamMembers, setTeamMembers] = useState<User[]>([])
+  const [stepValid, setStepValid] = useState(false);
+
 
   const [teamData, setTeamData] = useState<TeamData>({
     name: "",
@@ -687,7 +689,7 @@ export default function TeamCreationModal() {
                 id="workStart"
                 type="time"
                 value={teamData.work_start_time}
-                onChange={(e) => setTeamData((prev) => ({ ...prev, work_start_time: e.target.value }))}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, work_start_time: e.target.value || "" }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -699,7 +701,7 @@ export default function TeamCreationModal() {
                 id="workEnd"
                 type="time"
                 value={teamData.work_end_time}
-                onChange={(e) => setTeamData((prev) => ({ ...prev, work_end_time: e.target.value }))}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, work_end_time: e.target.value || "" }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -718,7 +720,7 @@ export default function TeamCreationModal() {
                 id="breakStart"
                 type="time"
                 value={teamData.break_start_time || ""}
-                onChange={(e) => setTeamData((prev) => ({ ...prev, break_start_time: e.target.value || undefined }))}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, break_start_time: e.target.value || "" }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -730,7 +732,7 @@ export default function TeamCreationModal() {
                 id="breakEnd"
                 type="time"
                 value={teamData.break_end_time || ""}
-                onChange={(e) => setTeamData((prev) => ({ ...prev, break_end_time: e.target.value || undefined }))}
+                onChange={(e) => setTeamData((prev) => ({ ...prev, break_end_time: e.target.value || "" }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -793,7 +795,7 @@ export default function TeamCreationModal() {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return teamData.name.trim() && teamData.team_type
+        return !!(teamData.name.trim() && teamData.team_type);
       case 2:
         return teamData.user_ids.length > 0
       case 3:
@@ -801,11 +803,24 @@ export default function TeamCreationModal() {
       case 4:
         return teamData.district_ids?.length > 0
       case 5:
-        return teamData.start_date && teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
+        return (
+          !!teamData.start_date &&
+          !!teamData.work_start_time &&
+          !!teamData.work_end_time &&
+          !!teamData.break_start_time &&
+          !!teamData.break_end_time
+        );
       default:
         return false
     }
   }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setStepValid(isStepValid());
+    }, 50); // Allow DOM & state to settle
+    return () => clearTimeout(timeout);
+  }, [teamData, currentStep]);
 
   // Data fetching
   useEffect(() => {
@@ -952,11 +967,12 @@ export default function TeamCreationModal() {
 
                       {currentStep === totalSteps ? (
                         <button
+                          key={`step-${currentStep}`}
                           type="button"
                           onClick={handleSubmit}
-                          disabled={!isStepValid() || submitting}
+                          disabled={!stepValid || submitting}
                           className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                            isStepValid() && !submitting
+                            stepValid && !submitting
                               ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                               : "bg-blue-400 cursor-not-allowed"
                           }`}

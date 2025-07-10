@@ -24,6 +24,8 @@ interface BookingDetailProps {
   getStatusColor: (status: string) => string
 }
 
+const DayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
 const BookingDetail: React.FC<BookingDetailProps> = ({
   booking,
   onClose,
@@ -35,6 +37,13 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const bookingDays = [
+                        ...new Set(
+                          booking.services.data.map((s: any) =>
+                            DayNames[new Date(s.date).getDay()]
+                          )
+                        ),
+                      ];
   return (
     <>
       {/* Header */}
@@ -142,6 +151,12 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
                   {formatDate(booking.date)} - {formatDate(booking.end_date)}
                 </p>
               </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Days</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {bookingDays.join(', ')}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -221,10 +236,14 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
                           </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
                         <div>
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date</p>
                           <p className="text-sm font-medium text-gray-900 mt-1">{formatDate(service.date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Day</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{DayNames[new Date(service.date).getDay()]}</p>
                         </div>
                         <div>
                           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Start Time</p>

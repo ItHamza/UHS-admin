@@ -180,7 +180,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
     try {
       setIsLoading(true)
       const response = await ServicesAction({ parentId })
-      setSubServices(response.data)
+      setSubServices(response.data.sort((a: any, b: any) => parseFloat(a.order) - parseFloat(b.order)))
     } catch (error) {
       console.error("Error fetching sub-services:", error)
       toast.error("Failed to fetch sub-services")

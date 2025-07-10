@@ -2,13 +2,14 @@
 
 import type React from "react"
 import { useState, useEffect, useTransition, Fragment } from "react"
-import { Dialog, Transition } from "@headlessui/react"
-import { EyeIcon } from "@heroicons/react/24/outline"
+import { Dialog, Disclosure, Listbox, Transition } from "@headlessui/react"
+import { EyeIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import type { Booking } from "@/types/booking"
 import BookingFilter from "./BookingFilter"
 import BookingAction from "@/actions/booking"
 import moment from "moment"
 import BookingDetail from "./BookingDetail"
+import { ChevronDownIcon, XCircleIcon } from "lucide-react"
 
 const BookingsList: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -16,6 +17,18 @@ const BookingsList: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isPending, startTransition] = useTransition()
+
+   // Enhanced filter states
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "all",
+    service: "all",
+    team: "all",
+    frequency: "all",
+    dateRange: "all",
+    amountRange: "all",
+  })
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
 
   useEffect(() => {
     startTransition(async () => {
@@ -43,17 +56,131 @@ const BookingsList: React.FC = () => {
     setFilterStatus(status)
   }
 
-  const filteredBookings =
-    filterStatus === "all"
-      ? bookings.filter(
-          (booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning",
-        )
-      : bookings.filter(
-          (booking) =>
-            booking.status === filterStatus &&
-            booking.service?.name != "Deep Cleaning" &&
-            booking.service?.name != "Residential Cleaning",
-        )
+  // Get unique values for filter options
+  const getUniqueValues = (key: string) => {
+    const values = bookings
+      .filter((booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning")
+      .map((booking) => {
+        switch (key) {
+          case "service":
+            return booking.service?.name
+          case "team":
+            return booking.team?.name
+          case "frequency":
+            return booking.frequency
+          case "status":
+            return booking.status
+          default:
+            return null
+        }
+      })
+      .filter((value, index, array) => value && array.indexOf(value) === index)
+
+    return values.sort()
+  }
+
+  // Enhanced filtering logic
+  const filteredBookings = bookings
+    .filter((booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning")
+    .filter((booking) => {
+      // Search filter
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase()
+        const matchesSearch =
+          booking.customer.toLowerCase().includes(searchTerm) ||
+          booking.booking_number.toLowerCase().includes(searchTerm) ||
+          booking.service?.name?.toLowerCase().includes(searchTerm) ||
+          booking.team?.name?.toLowerCase().includes(searchTerm)
+
+        if (!matchesSearch) return false
+      }
+
+      // Status filter
+      if (filters.status !== "all" && booking.status !== filters.status) {
+        return false
+      }
+
+      // Service filter
+      if (filters.service !== "all" && booking.service?.name !== filters.service) {
+        return false
+      }
+
+      // Team filter
+      if (filters.team !== "all" && booking.team?.name !== filters.team) {
+        return false
+      }
+
+      // Frequency filter
+      if (filters.frequency !== "all" && booking.frequency !== filters.frequency) {
+        return false
+      }
+
+      // Date range filter
+      if (filters.dateRange !== "all") {
+        const bookingDate = moment(booking.date)
+        const now = moment()
+
+        switch (filters.dateRange) {
+          case "today":
+            if (!bookingDate.isSame(now, "day")) return false
+            break
+          case "this_week":
+            if (!bookingDate.isSame(now, "week")) return false
+            break
+          case "this_month":
+            if (!bookingDate.isSame(now, "month")) return false
+            break
+          case "last_30_days":
+            if (!bookingDate.isAfter(now.clone().subtract(30, "days"))) return false
+            break
+        }
+      }
+
+      // Amount range filter
+      if (filters.amountRange !== "all") {
+        const amount = booking.total_amount
+        switch (filters.amountRange) {
+          case "0-100":
+            if (amount < 0 || amount > 100) return false
+            break
+          case "100-500":
+            if (amount < 100 || amount > 500) return false
+            break
+          case "500-1000":
+            if (amount < 500 || amount > 1000) return false
+            break
+          case "1000+":
+            if (amount < 1000) return false
+            break
+        }
+      }
+
+      return true
+    })
+
+  // Filter management functions
+  const updateFilter = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const clearAllFilters = () => {
+    setFilters({
+      search: "",
+      status: "all",
+      service: "all",
+      team: "all",
+      frequency: "all",
+      dateRange: "all",
+      amountRange: "all",
+    })
+  }
+
+  const getActiveFilterCount = () => {
+    return (
+      Object.entries(filters).filter(([key, value]) => key !== "search" && value !== "all").length +
+      (filters.search ? 1 : 0)
+    )
+  }
 
   const getStatusColor = (status: string) => {
     const statusColors = {
@@ -109,18 +236,424 @@ const BookingsList: React.FC = () => {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Bookings</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage and view all your bookings</p>
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Bookings</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage and view all your bookings ({filteredBookings.length} results)
+              </p>
+            </div>
+
+            {/* Filter Toggle Button */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <FunnelIcon className="h-4 w-4 mr-2" />
+                Filters
+                {getActiveFilterCount() > 0 && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    {getActiveFilterCount()}
+                  </span>
+                )}
+                <ChevronDownIcon className={`ml-2 h-4 w-4 transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {getActiveFilterCount() > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center px-3 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <XCircleIcon className="h-4 w-4 mr-1" />
+                  Clear All
+                </button>
+              )}
+            </div>
           </div>
-          {!isPending && (
-            <BookingFilter
-              currentFilter={filterStatus}
-              onFilterChange={handleStatusChange}
-              bookingCount={filteredBookings.length}
+
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by customer name, booking ID, service, or team..."
+              value={filters.search}
+              onChange={(e) => updateFilter("search", e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
-          )}
+            {filters.search && (
+              <button
+                onClick={() => updateFilter("search", "")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <XCircleIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Advanced Filters Panel */}
+          <Disclosure as="div">
+            {({ open }) => (
+              <>
+                <Transition
+                  show={isFilterOpen}
+                  enter="transition duration-100 ease-out"
+                  enterFrom="transform scale-95 opacity-0"
+                  enterTo="transform scale-100 opacity-100"
+                  leave="transition duration-75 ease-out"
+                  leaveFrom="transform scale-100 opacity-100"
+                  leaveTo="transform scale-95 opacity-0"
+                >
+                  <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {/* Status Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <Listbox value={filters.status} onChange={(value) => updateFilter("status", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.status === "all"
+                                  ? "All Statuses"
+                                  : filters.status.charAt(0).toUpperCase() +
+                                    filters.status.replaceAll("_", " ").slice(1)}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                <Listbox.Option
+                                  value="all"
+                                  className={({ active }) =>
+                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                    }`
+                                  }
+                                >
+                                  All Statuses
+                                </Listbox.Option>
+                                {getUniqueValues("status").map((status) => (
+                                  <Listbox.Option
+                                    key={status}
+                                    value={status}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {status.charAt(0).toUpperCase() + status.replaceAll("_", " ").slice(1)}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+
+                      {/* Service Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
+                        <Listbox value={filters.service} onChange={(value) => updateFilter("service", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.service === "all" ? "All Services" : filters.service}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                <Listbox.Option
+                                  value="all"
+                                  className={({ active }) =>
+                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                    }`
+                                  }
+                                >
+                                  All Services
+                                </Listbox.Option>
+                                {getUniqueValues("service").map((service) => (
+                                  <Listbox.Option
+                                    key={service}
+                                    value={service}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {service}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+
+                      {/* Team Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
+                        <Listbox value={filters.team} onChange={(value) => updateFilter("team", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.team === "all" ? "All Teams" : filters.team}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                <Listbox.Option
+                                  value="all"
+                                  className={({ active }) =>
+                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                    }`
+                                  }
+                                >
+                                  All Teams
+                                </Listbox.Option>
+                                {getUniqueValues("team").map((team) => (
+                                  <Listbox.Option
+                                    key={team}
+                                    value={team}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {team}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+
+                      {/* Frequency Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                        <Listbox value={filters.frequency} onChange={(value) => updateFilter("frequency", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.frequency === "all"
+                                  ? "All Frequencies"
+                                  : filters.frequency.charAt(0).toUpperCase() + filters.frequency.slice(1)}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                <Listbox.Option
+                                  value="all"
+                                  className={({ active }) =>
+                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                    }`
+                                  }
+                                >
+                                  All Frequencies
+                                </Listbox.Option>
+                                {getUniqueValues("frequency").map((frequency) => (
+                                  <Listbox.Option
+                                    key={frequency}
+                                    value={frequency}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {frequency.charAt(0).toUpperCase() + frequency.slice(1)}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+
+                      {/* Date Range Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                        <Listbox value={filters.dateRange} onChange={(value) => updateFilter("dateRange", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.dateRange === "all"
+                                  ? "All Dates"
+                                  : filters.dateRange.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                {[
+                                  { value: "all", label: "All Dates" },
+                                  { value: "today", label: "Today" },
+                                  { value: "this_week", label: "This Week" },
+                                  { value: "this_month", label: "This Month" },
+                                  { value: "last_30_days", label: "Last 30 Days" },
+                                ].map((option) => (
+                                  <Listbox.Option
+                                    key={option.value}
+                                    value={option.value}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {option.label}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+
+                      {/* Amount Range Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount Range</label>
+                        <Listbox value={filters.amountRange} onChange={(value) => updateFilter("amountRange", value)}>
+                          <div className="relative">
+                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                              <span className="block truncate">
+                                {filters.amountRange === "all"
+                                  ? "All Amounts"
+                                  : filters.amountRange === "1000+"
+                                    ? "$1000+"
+                                    : `$${filters.amountRange}`}
+                              </span>
+                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                              </span>
+                            </Listbox.Button>
+                            <Transition
+                              as={Fragment}
+                              leave="transition ease-in duration-100"
+                              leaveFrom="opacity-100"
+                              leaveTo="opacity-0"
+                            >
+                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                {[
+                                  { value: "all", label: "All Amounts" },
+                                  { value: "0-100", label: "$0 - $100" },
+                                  { value: "100-500", label: "$100 - $500" },
+                                  { value: "500-1000", label: "$500 - $1000" },
+                                  { value: "1000+", label: "$1000+" },
+                                ].map((option) => (
+                                  <Listbox.Option
+                                    key={option.value}
+                                    value={option.value}
+                                    className={({ active }) =>
+                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
+                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
+                                      }`
+                                    }
+                                  >
+                                    {option.label}
+                                  </Listbox.Option>
+                                ))}
+                              </Listbox.Options>
+                            </Transition>
+                          </div>
+                        </Listbox>
+                      </div>
+                    </div>
+
+                    {/* Active Filters Display */}
+                    {getActiveFilterCount() > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-sm font-medium text-gray-700">Active filters:</span>
+                          {filters.search && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Search: "{filters.search}"
+                              <button
+                                onClick={() => updateFilter("search", "")}
+                                className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
+                              >
+                                <XMarkIcon className="w-3 h-3" />
+                              </button>
+                            </span>
+                          )}
+                          {Object.entries(filters).map(([key, value]) => {
+                            if (key === "search" || value === "all") return null
+                            return (
+                              <span
+                                key={key}
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                              >
+                                {key.charAt(0).toUpperCase() + key.slice(1)}:{" "}
+                                {typeof value === "string"
+                                  ? value.includes("_")
+                                    ? value.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+                                    : value.charAt(0).toUpperCase() + value.slice(1)
+                                  : value}
+                                <button
+                                  onClick={() => updateFilter(key, "all")}
+                                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-600"
+                                >
+                                  <XMarkIcon className="w-3 h-3" />
+                                </button>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Transition>
+              </>
+            )}
+          </Disclosure>
         </div>
       </div>
 

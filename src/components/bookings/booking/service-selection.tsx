@@ -52,6 +52,7 @@ export const ServiceSelection: React.FC<ServiceSelectionProps> = ({
               price_per_unit: subCategory.price_per_unit,
               currency: subCategory.currency || "QAR",
               category: subCategory.category,
+              no_of_cleaners: subCategory.no_of_cleaners,
             },
           ],
         }
