@@ -3,9 +3,6 @@ import "./globals.css";
 import AppLayout from "@/components/layouts/AppLayout";
 import { Toaster } from "react-hot-toast";
 import Providers from "./providers";
-import {
-  ClerkProvider
-} from '@clerk/nextjs'
 
 export const metadata: Metadata = {
   title: "Urban Hospitality Services",
@@ -18,7 +15,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
       <html lang='en'>
         <head>
           <link
@@ -33,7 +29,6 @@ export default function RootLayout({
           <Toaster position='bottom-center' />
         </body>
       </html>
-    </ClerkProvider>
 
   );
 }
