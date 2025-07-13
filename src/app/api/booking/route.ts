@@ -4,13 +4,13 @@ import moment from "moment";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-async function fetchBookings() {
-  const response = await fetch(`${BASE_URL}/bookings/bookings`);
+async function fetchBookings(page: number, limit: number) {
+  const response = await fetch(`${BASE_URL}/bookings/bookings?page=${page}&limit=${limit}`);
   if (!response.ok) {
     throw new Error("Failed to fetch bookings");
   }
   const data = await response.json();
-  return data.data || [];
+  return data || [];
 }
 
 const residenceDurationMap: any = {
@@ -69,12 +69,16 @@ function calculateDuration(
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const bookings = await fetchBookings();
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+
+    const bookings = await fetchBookings(page, limit);
 
     const transformedBookings = await Promise.all(
-      bookings.map(async (booking: any) => {
+      bookings.data.map(async (booking: any) => {
         const startDate = moment(booking.date);
         const endDate = moment(booking.end_date);
         const duration = calculateDuration(startDate, endDate);
@@ -109,6 +113,7 @@ export async function GET() {
       success: true,
       message: "Bookings fetched and transformed successfully",
       data: transformedBookings,
+      pagination: bookings.pagination
     });
   } catch (error: any) {
     console.error("Error fetching or transforming bookings:", error);

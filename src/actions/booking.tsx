@@ -1,9 +1,9 @@
 "use server";
 import { deepBooking, getBookingById, getBookings, renewBooking, specialiseBooking } from "@/lib/service/booking";
 
-export default async function BookingAction() {
-  const bookings = await getBookings();
-  return bookings.data;
+export default async function BookingAction(page: number, limit: number) {
+  const bookings = await getBookings(page, limit);
+  return bookings;
 }
 
 export async function BookingByIdAction(id: string) {

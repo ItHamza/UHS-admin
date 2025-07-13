@@ -1,7 +1,7 @@
 import { apiRequest } from "../api";
 
-export const getBookings = async () => {
-  return apiRequest<any>("/booking");
+export const getBookings = async (page: number, limit: number) => {
+  return apiRequest<any>(`/booking?page=${page}&limit=${limit}`);
 };
 
 export const getBookingById = async (id: string) => {

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import CustomerDetail from "./CustomerDetails";
 import CustomerAction from "@/actions/customer";
 import EditCustomerModal from "./EditCustomerDailog";
 import { UserDeleteAction } from "@/actions/users";
 import toast from "react-hot-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Customer {
   id: string;
@@ -26,29 +27,38 @@ interface Customer {
 }
 
 const CustomersList: React.FC = () => {
+  const queryClient = useQueryClient()
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const [showEditUser, setShowEditUser] = useState<boolean>(false);
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const { data, isPending } = useQuery<{ data: Customer[] }>({
+    queryKey: ['customers'],
+    queryFn: () => fetch('/api/customer').then(res => res.json())
+  })
 
-  const [isPending, startTransition] = useTransition();
+  const filteredCustomers = data?.data ?? []
 
-  useEffect(() => {
-    startTransition(async () => {
-      try {
-        const data = await CustomerAction();
 
-        setCustomers(data);
-      } catch (error) {
-        console.error("Failed to fetch customers:", error);
-      }
-    });
-  }, []);
+  const customers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredCustomers.slice(start, end);
+  }, [currentPage, filteredCustomers, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(startIndex + customers.length - 1, filteredCustomers.length);
+
+  const isFirstPage = currentPage === 1;
+  const isLastPage = currentPage === totalPages || totalPages === 0;
+
 
   const handleViewCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -103,10 +113,9 @@ const CustomersList: React.FC = () => {
   };
 
 
-  const refreshCustomers = async () => {
-    const data = await CustomerAction();
-    setCustomers(data);
-  };
+  const refreshCustomers = () => {
+    queryClient.invalidateQueries({ queryKey: ['customers'] })
+  }
 
 
   return (
@@ -117,7 +126,7 @@ const CustomersList: React.FC = () => {
         <div className='flex justify-between items-center p-4 border-b'>
           <h2 className='text-lg font-medium'>Customer Directory</h2>
           <span className='text-sm text-gray-500'>
-            {customers.length} customers
+            {customers?.length ?? 0} customers
           </span>
         </div>
       )}
@@ -166,8 +175,8 @@ const CustomersList: React.FC = () => {
               </tr>
             </thead>
             <tbody className='bg-white divide-y divide-gray-200'>
-              {customers.map((customer) => (
-                <tr key={customer.id} className='hover:bg-gray-50'>
+              {customers?.map((customer, index) => (
+                <tr key={`${customer.id}:${index}`} className='hover:bg-gray-50'>
                   <td className='px-6 py-4 whitespace-nowrap'>
                     <div className='flex items-center'>
                       <div>
@@ -250,35 +259,56 @@ const CustomersList: React.FC = () => {
         </div>
       )}
 
-      {/* Pagination could go here */}
-      <div className='bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6'>
-        <div className='flex-1 flex justify-between sm:hidden'>
-          <button className='relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50'>
-            Previous
-          </button>
-          <button className='ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50'>
-            Next
-          </button>
-        </div>
-        <div className='hidden sm:flex-1 sm:flex sm:items-center sm:justify-between'>
+      {/* Pagination */}
+      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
           <div>
-            <p className='text-sm text-gray-700'>
-              Showing <span className='font-medium'>1</span> to{" "}
-              <span className='font-medium'>{customers.length}</span> of{" "}
-              <span className='font-medium'>{customers.length}</span> results
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex}</span> to{" "}
+              <span className="font-medium">{endIndex}</span> of{" "}
+              <span className="font-medium">{filteredCustomers.length}</span> customers
             </p>
           </div>
-          <div>
-            <nav
-              className='relative z-0 inline-flex rounded-md shadow-sm -space-x-px'
-              aria-label='Pagination'>
-              <button className='relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50'>
+
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-700 flex items-center gap-2">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <span>per page</span>
+            </div>
+
+            <nav className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={isFirstPage}
+                className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
+                  isFirstPage
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 cursor-pointer"
+                }`}
+              >
                 Previous
               </button>
-              <button className='bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium'>
-                1
-              </button>
-              <button className='relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50'>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={isLastPage}
+                className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
+                  isLastPage
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 cursor-pointer"
+                }`}
+              >
                 Next
               </button>
             </nav>

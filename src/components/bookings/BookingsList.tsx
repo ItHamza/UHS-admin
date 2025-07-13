@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useTransition, Fragment } from "react"
+import { useState, useEffect, useTransition, Fragment, useMemo } from "react"
 import { Dialog, Disclosure, Listbox, Transition } from "@headlessui/react"
 import { EyeIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import type { Booking } from "@/types/booking"
@@ -17,6 +17,20 @@ const BookingsList: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isPending, startTransition] = useTransition()
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    per_page: 10,
+    total: 0,
+    total_pages: 0,
+    has_next_page: false,
+    has_previous_page: false,
+    next_page: null,
+    previous_page: null,
+    showing_from: 0,
+    showing_to: 0,
+  });
 
    // Enhanced filter states
   const [filters, setFilters] = useState({
@@ -33,14 +47,15 @@ const BookingsList: React.FC = () => {
   useEffect(() => {
     startTransition(async () => {
       try {
-        const data = await BookingAction()
-        console.log("bookingdata", data)
-        setBookings(data)
+        const bookings_data = await BookingAction(page, itemsPerPage)
+        console.log("bookingdata", bookings_data)
+        setBookings(bookings_data.data)
+        setPagination(bookings_data.pagination)
       } catch (error) {
         console.error("Failed to fetch bookings:", error)
       }
     })
-  }, [])
+  }, [page, itemsPerPage])
 
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -80,9 +95,10 @@ const BookingsList: React.FC = () => {
   }
 
   // Enhanced filtering logic
-  const filteredBookings = bookings
-    .filter((booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning")
-    .filter((booking) => {
+  const filteredBookings = useMemo(() => {
+    return bookings
+      .filter((booking) => booking.service?.name !== "Deep Cleaning" && booking.service?.name !== "Residential Cleaning")
+      .filter((booking) => {
       // Search filter
       if (filters.search) {
         const searchTerm = filters.search.toLowerCase()
@@ -157,6 +173,7 @@ const BookingsList: React.FC = () => {
 
       return true
     })
+  }, [bookings, filters]);
 
   // Filter management functions
   const updateFilter = (key: string, value: string) => {
@@ -812,44 +829,49 @@ const BookingsList: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-        <div className="flex-1 flex justify-between sm:hidden">
-          <button
-            disabled
-            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <button
-            disabled
-            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-white cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+      <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
           <div>
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to{" "}
-              <span className="font-medium">{filteredBookings.length}</span> of{" "}
-              <span className="font-medium">{filteredBookings.length}</span> results
-            </p>
+          <p className="text-sm text-gray-500">
+            Showing{" "}
+            <span className="font-medium">{pagination.showing_from}</span> to{" "}
+            <span className="font-medium">{pagination.showing_to}</span> of{" "}
+            <span className="font-medium">{pagination.total}</span> results
+          </p>
           </div>
-          <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-700 flex items-center gap-2">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <span>per page</span>
+            </div>
+            <div className="inline-flex space-x-2">
               <button
-                disabled
-                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 cursor-not-allowed"
+                onClick={() => setPage(pagination.previous_page!)}
+                disabled={!pagination.has_previous_page}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
               >
                 Previous
               </button>
               <button
-                disabled
-                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 cursor-not-allowed"
+                onClick={() => setPage(pagination.next_page!)}
+                disabled={!pagination.has_next_page}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
               >
                 Next
               </button>
-            </nav>
+            </div>
           </div>
         </div>
       </div>
