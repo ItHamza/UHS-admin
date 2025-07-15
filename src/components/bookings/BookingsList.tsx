@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useTransition, Fragment, useMemo } from "react"
-import { Dialog, Disclosure, Listbox, Transition } from "@headlessui/react"
+import { Combobox, Dialog, Disclosure, Listbox, Transition } from "@headlessui/react"
 import { EyeIcon, FunnelIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline"
 import type { Booking } from "@/types/booking"
 import BookingFilter from "./BookingFilter"
@@ -10,6 +10,11 @@ import BookingAction from "@/actions/booking"
 import moment from "moment"
 import BookingDetail from "./BookingDetail"
 import { ChevronDownIcon, XCircleIcon } from "lucide-react"
+import { User } from "@/types/new-booking"
+import toast from "react-hot-toast"
+import { noFocusStyle } from "@/utils/styles"
+import { TeamsAction } from "@/actions/team"
+import { useQuery } from "@tanstack/react-query"
 
 const BookingsList: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -32,6 +37,13 @@ const BookingsList: React.FC = () => {
     showing_to: 0,
   });
 
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [teams, setTeams] = useState<User[]>([])
+  const [userQuery, setUserQuery] = useState("");
+  const [teamQuery, setTeamQuery] = useState("");
+  
+  
    // Enhanced filter states
   const [filters, setFilters] = useState({
     search: "",
@@ -44,10 +56,36 @@ const BookingsList: React.FC = () => {
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
+  const { data, isLoading } = useQuery<{ data: User[], pagination: any }>({
+    queryKey: ['user-search', userQuery],
+    queryFn: () => fetch(`/api/customer?email=${userQuery}`).then(res => res.json()),
+    enabled: userQuery.length > 5, // start searching after 2+ characters
+  });
+
+  const fetchTeams = async () => {
+    try {
+      const response = await TeamsAction()
+      debugger;
+      setTeams(response)
+    } catch (error) {
+      console.error("Error fetching users:", error)
+      toast.error("Failed to fetch users")
+    }
+  }
+
+  useEffect(() => {
+    fetchTeams()
+  }, [])
+
+  const filteredTeams =
+    teamQuery === "" ? teams : teams.filter((u) => `${u.name}`.toLowerCase().includes(teamQuery.toLowerCase()))
+
+
   useEffect(() => {
     startTransition(async () => {
       try {
-        const bookings_data = await BookingAction(page, itemsPerPage)
+        const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"]
+        const bookings_data = await BookingAction(page, itemsPerPage, service_id, selectedUserId, selectedTeamId)
         console.log("bookingdata", bookings_data)
         setBookings(bookings_data.data)
         setPagination(bookings_data.pagination)
@@ -55,7 +93,7 @@ const BookingsList: React.FC = () => {
         console.error("Failed to fetch bookings:", error)
       }
     })
-  }, [page, itemsPerPage])
+  }, [page, itemsPerPage, selectedUserId, selectedTeamId])
 
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -74,7 +112,6 @@ const BookingsList: React.FC = () => {
   // Get unique values for filter options
   const getUniqueValues = (key: string) => {
     const values = bookings
-      .filter((booking) => booking.service?.name != "Deep Cleaning" && booking.service?.name != "Residential Cleaning")
       .map((booking) => {
         switch (key) {
           case "service":
@@ -329,58 +366,79 @@ const BookingsList: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {/* Status Filter */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <Listbox value={filters.status} onChange={(value) => updateFilter("status", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.status === "all"
-                                  ? "All Statuses"
-                                  : filters.status.charAt(0).toUpperCase() +
-                                    filters.status.replaceAll("_", " ").slice(1)}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                <Listbox.Option
-                                  value="all"
-                                  className={({ active }) =>
-                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                    }`
-                                  }
-                                >
-                                  All Statuses
-                                </Listbox.Option>
-                                {getUniqueValues("status").map((status) => (
-                                  <Listbox.Option
-                                    key={status}
-                                    value={status}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {status.charAt(0).toUpperCase() + status.replaceAll("_", " ").slice(1)}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Search by customer email</label>
+                        <Combobox
+                          value={selectedUserId}
+                          onChange={(userId) => {
+                            setSelectedUserId(userId || "");
+                          }}
+                        >
+                          <Combobox.Input
+                            onChange={(e) => setUserQuery(e.target.value)}
+                            displayValue={(userId) => {
+                              const u = data?.data?.find((u) => u.base_id === userId);
+                              return u ? `${u.name} - ${u.phone}` : "";
+                            }}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            placeholder='Select a customer'
+                            required
+                          />
+                          <Combobox.Options className='absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg'>
+                            {isLoading && <div className="px-4 py-2">Searching...</div>}
+                            {data?.data?.map((user) => (
+                              <Combobox.Option
+                                key={user.base_id}
+                                value={user.base_id}
+                                className="cursor-pointer select-none px-4 py-2 hover:bg-blue-50 hover:text-blue-900"
+                              >
+                                {user.name}
+                              </Combobox.Option>
+                            ))}
+                            {!isLoading && data?.data?.length === 0 && (
+                              <div className="px-4 py-2 text-gray-500">No users found.</div>
+                            )}
+                          </Combobox.Options>
+                        </Combobox>
+
                       </div>
 
-                      {/* Service Filter */}
                       <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Search by team name</label>
+                        <Combobox
+                          value={selectedTeamId}
+                          onChange={(teamId) => {
+                            setSelectedTeamId(teamId || "");
+                            const selectedTeam = teams.find(
+                              (u) => u.id === teamId
+                            );
+                          }}>
+                          <Combobox.Input
+                            onChange={(e) => setTeamQuery(e.target.value)}
+                            displayValue={(teamId) => {
+                              const u = teams.find((u) => u.id === teamId);
+                              return u ? `${u.name}` : "";
+                            }}
+                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+                            placeholder='Select a team'
+                            required
+                          />
+                          <Combobox.Options className='absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg'>
+                            {filteredTeams.map((team) => (
+                              <Combobox.Option
+                                key={team.id}
+                                value={team.id}
+                                className="cursor-pointer select-none px-4 py-2 hover:bg-blue-50 hover:text-blue-900">
+                                {team.name}
+                              </Combobox.Option>
+                            ))}
+                          </Combobox.Options>
+                        </Combobox>
+                      </div>
+
+                      
+
+                      {/* Service Filter */}
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
                         <Listbox value={filters.service} onChange={(value) => updateFilter("service", value)}>
                           <div className="relative">
@@ -426,10 +484,10 @@ const BookingsList: React.FC = () => {
                             </Transition>
                           </div>
                         </Listbox>
-                      </div>
+                      </div> */}
 
                       {/* Team Filter */}
-                      <div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
                         <Listbox value={filters.team} onChange={(value) => updateFilter("team", value)}>
                           <div className="relative">
@@ -475,10 +533,10 @@ const BookingsList: React.FC = () => {
                             </Transition>
                           </div>
                         </Listbox>
-                      </div>
+                      </div> */}
 
                       {/* Frequency Filter */}
-                      <div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
                         <Listbox value={filters.frequency} onChange={(value) => updateFilter("frequency", value)}>
                           <div className="relative">
@@ -526,10 +584,10 @@ const BookingsList: React.FC = () => {
                             </Transition>
                           </div>
                         </Listbox>
-                      </div>
+                      </div> */}
 
                       {/* Date Range Filter */}
-                      <div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                         <Listbox value={filters.dateRange} onChange={(value) => updateFilter("dateRange", value)}>
                           <div className="relative">
@@ -573,10 +631,10 @@ const BookingsList: React.FC = () => {
                             </Transition>
                           </div>
                         </Listbox>
-                      </div>
+                      </div> */}
 
                       {/* Amount Range Filter */}
-                      <div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Amount Range</label>
                         <Listbox value={filters.amountRange} onChange={(value) => updateFilter("amountRange", value)}>
                           <div className="relative">
@@ -622,7 +680,7 @@ const BookingsList: React.FC = () => {
                             </Transition>
                           </div>
                         </Listbox>
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* Active Filters Display */}

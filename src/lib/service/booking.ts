@@ -1,7 +1,17 @@
 import { apiRequest } from "../api";
 
-export const getBookings = async (page: number, limit: number) => {
-  return apiRequest<any>(`/booking?page=${page}&limit=${limit}`);
+export const getBookings = async (page: number, limit: number, service_id: string[], user_id: string, team_id: string) => {
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+  params.append('user_id', String(user_id));
+  params.append('team_id', String(team_id));
+
+  service_id.forEach(id => {
+    params.append('service_id', id);
+  });
+
+  return apiRequest<any>(`/booking?${params.toString()}`);
 };
 
 export const getBookingById = async (id: string) => {

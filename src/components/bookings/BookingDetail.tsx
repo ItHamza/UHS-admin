@@ -15,6 +15,7 @@ import {
 import RescheduleModal from "./RescheduleDialog";
 import RenewModal from "./RenewDialog";
 import CancelModal from "./CancelModal";
+import { Mail } from "lucide-react";
 interface BookingDetailProps {
   booking: Booking
   onClose: () => void
@@ -89,6 +90,20 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
               Customer Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <PhoneIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Phone</p>
+                  <p className="text-sm text-gray-600">{booking.user?.phone}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Mail className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Email</p>
+                  <p className="text-sm text-gray-600">{booking.user?.email}</p>
+                </div>
+              </div>
               <div className="flex items-center space-x-3">
                 <MapPinIcon className="h-5 w-5 text-gray-400" />
                 <div>

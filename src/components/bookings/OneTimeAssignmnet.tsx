@@ -104,9 +104,11 @@ const OneTimeServicesAssignment: React.FC = () => {
   useEffect(() => {
     startTransition(async () => {
       try {
-        const bookings_data = await BookingAction(page, itemsPerPage);
+        const service_ids = ["7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939", "3f99ad31-7f21-4298-b0d6-50101165e7ef"]
+        const bookings_data = await BookingAction(page, itemsPerPage, service_ids, "", "");
+        debugger;
         const filteredBooking = bookings_data.data.filter((b: any) => b.service.name !== "Deep Cleaning" || b.service.name !== "Residential Cleaning")
-        setBookings(filteredBooking);
+        setBookings(bookings_data.data);
         setPagination(bookings_data.pagination)
       } catch (error) {
         console.error("Failed to fetch bookings:", error);
@@ -124,7 +126,8 @@ const OneTimeServicesAssignment: React.FC = () => {
                               p.frequency === booking.frequency &&
                               p.residenceType.type === booking.residence_type.type
                             );
-        duration_value = service_type.duration_value
+        debugger;
+        duration_value = service_type?.duration_value
       } else {
         const subServices = booking.bookingItems
                 .map(item => {
@@ -142,10 +145,17 @@ const OneTimeServicesAssignment: React.FC = () => {
       const data = {
         district_id: booking.district_id,
         start_date: booking.date,
-        duration: duration_value
+        duration: duration_value || 1
       }
+      debugger;
       const response = await OneTimeServiceTeamAvailabilityAction(data)
-      setTeamAvailability(response)
+      debugger;
+      if (response.success){
+        setTeamAvailability(response)
+      }
+      else {
+        toast.error(response.message || "Team availablity no found")
+      }
     } catch (error) {
       console.error("Error fetching team availability:", error)
     } finally {

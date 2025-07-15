@@ -34,30 +34,27 @@ const CustomersList: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const [showEditUser, setShowEditUser] = useState<boolean>(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { data, isPending } = useQuery<{ data: Customer[] }>({
-    queryKey: ['customers'],
-    queryFn: () => fetch('/api/customer').then(res => res.json())
+  const { data, isPending } = useQuery<{ data: Customer[], pagination: any }>({
+    queryKey: ['customers', page, itemsPerPage],
+    queryFn: () => fetch(`/api/customer?page=${page}&limit=${itemsPerPage}`).then(res => res.json())
   })
 
-  const filteredCustomers = data?.data ?? []
-
-
-  const customers = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    return filteredCustomers.slice(start, end);
-  }, [currentPage, filteredCustomers, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
-
-  const startIndex = (currentPage - 1) * itemsPerPage + 1;
-  const endIndex = Math.min(startIndex + customers.length - 1, filteredCustomers.length);
-
-  const isFirstPage = currentPage === 1;
-  const isLastPage = currentPage === totalPages || totalPages === 0;
+  const customers = data?.data ?? []
+  const pagination = data?.pagination ?? {
+    current_page: 1,
+    per_page: 10,
+    total: 0,
+    total_pages: 0,
+    has_next_page: false,
+    has_previous_page: false,
+    next_page: null,
+    previous_page: null,
+    showing_from: 0,
+    showing_to: 0,
+  }
 
 
   const handleViewCustomer = (customer: Customer) => {
@@ -263,13 +260,13 @@ const CustomersList: React.FC = () => {
       <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
           <div>
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">{startIndex}</span> to{" "}
-              <span className="font-medium">{endIndex}</span> of{" "}
-              <span className="font-medium">{filteredCustomers.length}</span> customers
-            </p>
+          <p className="text-sm text-gray-500">
+            Showing{" "}
+            <span className="font-medium">{pagination.showing_from}</span> to{" "}
+            <span className="font-medium">{pagination.showing_to}</span> of{" "}
+            <span className="font-medium">{pagination.total}</span> results
+          </p>
           </div>
-
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-700 flex items-center gap-2">
               <span>Show</span>
@@ -277,7 +274,7 @@ const CustomersList: React.FC = () => {
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
+                  setPage(1);
                 }}
                 className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
@@ -287,31 +284,22 @@ const CustomersList: React.FC = () => {
               </select>
               <span>per page</span>
             </div>
-
-            <nav className="flex items-center gap-2">
+            <div className="inline-flex space-x-2">
               <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={isFirstPage}
-                className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
-                  isFirstPage
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 cursor-pointer"
-                }`}
+                onClick={() => setPage(pagination.previous_page!)}
+                disabled={!pagination.has_previous_page}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
               >
                 Previous
               </button>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={isLastPage}
-                className={`px-3 py-1.5 rounded-md border text-sm font-medium ${
-                  isLastPage
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300 cursor-pointer"
-                }`}
+                onClick={() => setPage(pagination.next_page!)}
+                disabled={!pagination.has_next_page}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50"
               >
                 Next
               </button>
-            </nav>
+            </div>
           </div>
         </div>
       </div>

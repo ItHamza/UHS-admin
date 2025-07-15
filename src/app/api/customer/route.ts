@@ -28,13 +28,24 @@ function getAddress(user: any) {
   return addressParts.join(", ") || "Address not available";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await fetch(`${BASE_URL}/users?role=user`);
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const email = searchParams.get('email') || '';
+
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    params.append('email', String(email));
+    params.append('role', 'user')
+  
+    const response = await fetch(`${BASE_URL}/users?${params.toString()}`);
     if (!response.ok) {
       throw new Error("Failed to fetch users");
     }
-    const { data: users } = await response.json();
+    const { data: users, pagination: pagination } = await response.json();
     const transformedUsers = await Promise.all(
       users.map(async (user: any, index: number) => {
         const bookings = await fetchBookings(user.id);
@@ -62,6 +73,7 @@ export async function GET() {
       success: true,
       message: "Users fetched and transformed successfully",
       data: transformedUsers,
+      pagination: pagination
     });
   } catch (error: any) {
     console.error("Error fetching or transforming users:", error);

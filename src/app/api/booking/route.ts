@@ -4,8 +4,16 @@ import moment from "moment";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-async function fetchBookings(page: number, limit: number) {
-  const response = await fetch(`${BASE_URL}/bookings/bookings?page=${page}&limit=${limit}`);
+async function fetchBookings(page: number, limit: number, service_id: string[], user_id: string, team_id: string) {
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+  params.append('user_id', String(user_id));
+  params.append('team_id', String(team_id));
+  service_id.forEach(id => {
+    params.append('service_id', id);
+  });
+  const response = await fetch(`${BASE_URL}/bookings/bookings?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch bookings");
   }
@@ -74,8 +82,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page')) || 1;
     const limit = Number(searchParams.get('limit')) || 10;
+    const service_id = searchParams.getAll('service_id');
+    const user_id = String(searchParams.get('user_id'))
+    const team_id = String(searchParams.get('team_id'))
 
-    const bookings = await fetchBookings(page, limit);
+    const bookings = await fetchBookings(page, limit, service_id, user_id, team_id);
 
     const transformedBookings = await Promise.all(
       bookings.data.map(async (booking: any) => {
