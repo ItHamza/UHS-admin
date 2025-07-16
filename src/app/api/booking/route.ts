@@ -4,12 +4,11 @@ import moment from "moment";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-async function fetchBookings(page: number, limit: number, service_id: string[], user_id: string, team_id: string) {
+async function fetchBookings(page: number, limit: number, service_id: string[], search: string) {
   const params = new URLSearchParams();
   params.append('page', String(page));
   params.append('limit', String(limit));
-  params.append('user_id', String(user_id));
-  params.append('team_id', String(team_id));
+  params.append('search', String(search));
   service_id.forEach(id => {
     params.append('service_id', id);
   });
@@ -83,10 +82,8 @@ export async function GET(request: Request) {
     const page = Number(searchParams.get('page')) || 1;
     const limit = Number(searchParams.get('limit')) || 10;
     const service_id = searchParams.getAll('service_id');
-    const user_id = String(searchParams.get('user_id'))
-    const team_id = String(searchParams.get('team_id'))
-
-    const bookings = await fetchBookings(page, limit, service_id, user_id, team_id);
+    const search = String(searchParams.get('search'))
+    const bookings = await fetchBookings(page, limit, service_id, search);
 
     const transformedBookings = await Promise.all(
       bookings.data.map(async (booking: any) => {

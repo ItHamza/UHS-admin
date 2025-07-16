@@ -24,6 +24,8 @@ const BookingsList: React.FC = () => {
   const [isPending, startTransition] = useTransition()
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [searchInput, setSearchInput] = useState(''); // local input
+  const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState({
     current_page: 1,
     per_page: 10,
@@ -36,12 +38,6 @@ const BookingsList: React.FC = () => {
     showing_from: 0,
     showing_to: 0,
   });
-
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
-  const [teams, setTeams] = useState<User[]>([])
-  const [userQuery, setUserQuery] = useState("");
-  const [teamQuery, setTeamQuery] = useState("");
   
   
    // Enhanced filter states
@@ -56,36 +52,12 @@ const BookingsList: React.FC = () => {
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  const { data, isLoading } = useQuery<{ data: User[], pagination: any }>({
-    queryKey: ['user-search', userQuery],
-    queryFn: () => fetch(`/api/customer?email=${userQuery}`).then(res => res.json()),
-    enabled: userQuery.length > 5, // start searching after 2+ characters
-  });
-
-  const fetchTeams = async () => {
-    try {
-      const response = await TeamsAction()
-      debugger;
-      setTeams(response)
-    } catch (error) {
-      console.error("Error fetching users:", error)
-      toast.error("Failed to fetch users")
-    }
-  }
-
-  useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  const filteredTeams =
-    teamQuery === "" ? teams : teams.filter((u) => `${u.name}`.toLowerCase().includes(teamQuery.toLowerCase()))
-
 
   useEffect(() => {
     startTransition(async () => {
       try {
         const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"]
-        const bookings_data = await BookingAction(page, itemsPerPage, service_id, selectedUserId, selectedTeamId)
+        const bookings_data = await BookingAction(page, itemsPerPage, service_id, search)
         console.log("bookingdata", bookings_data)
         setBookings(bookings_data.data)
         setPagination(bookings_data.pagination)
@@ -93,7 +65,7 @@ const BookingsList: React.FC = () => {
         console.error("Failed to fetch bookings:", error)
       }
     })
-  }, [page, itemsPerPage, selectedUserId, selectedTeamId])
+  }, [page, itemsPerPage, search])
 
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -301,7 +273,7 @@ const BookingsList: React.FC = () => {
 
             {/* Filter Toggle Button */}
             <div className="flex items-center space-x-3">
-              <button
+              {/* <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
@@ -313,7 +285,7 @@ const BookingsList: React.FC = () => {
                   </span>
                 )}
                 <ChevronDownIcon className={`ml-2 h-4 w-4 transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
-              </button>
+              </button> */}
 
               {getActiveFilterCount() > 0 && (
                 <button
@@ -334,401 +306,26 @@ const BookingsList: React.FC = () => {
             </div>
             <input
               type="text"
-              placeholder="Search by customer name, booking ID, service, or team..."
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
+              value={searchInput}
+              placeholder="Search by customer name, phone, email, booking ID, service..."
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setSearch(searchInput);
+                }
+              }}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            {filters.search && (
+
+            {search && (
               <button
-                onClick={() => updateFilter("search", "")}
+                onClick={() => setSearchInput("")}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
                 <XCircleIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
               </button>
             )}
           </div>
-
-          {/* Advanced Filters Panel */}
-          <Disclosure as="div">
-            {({ open }) => (
-              <>
-                <Transition
-                  show={isFilterOpen}
-                  enter="transition duration-100 ease-out"
-                  enterFrom="transform scale-95 opacity-0"
-                  enterTo="transform scale-100 opacity-100"
-                  leave="transition duration-75 ease-out"
-                  leaveFrom="transform scale-100 opacity-100"
-                  leaveTo="transform scale-95 opacity-0"
-                >
-                  <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {/* Status Filter */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Search by customer email</label>
-                        <Combobox
-                          value={selectedUserId}
-                          onChange={(userId) => {
-                            setSelectedUserId(userId || "");
-                          }}
-                        >
-                          <Combobox.Input
-                            onChange={(e) => setUserQuery(e.target.value)}
-                            displayValue={(userId) => {
-                              const u = data?.data?.find((u) => u.base_id === userId);
-                              return u ? `${u.name} - ${u.phone}` : "";
-                            }}
-                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                            placeholder='Select a customer'
-                            required
-                          />
-                          <Combobox.Options className='absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg'>
-                            {isLoading && <div className="px-4 py-2">Searching...</div>}
-                            {data?.data?.map((user) => (
-                              <Combobox.Option
-                                key={user.base_id}
-                                value={user.base_id}
-                                className="cursor-pointer select-none px-4 py-2 hover:bg-blue-50 hover:text-blue-900"
-                              >
-                                {user.name}
-                              </Combobox.Option>
-                            ))}
-                            {!isLoading && data?.data?.length === 0 && (
-                              <div className="px-4 py-2 text-gray-500">No users found.</div>
-                            )}
-                          </Combobox.Options>
-                        </Combobox>
-
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Search by team name</label>
-                        <Combobox
-                          value={selectedTeamId}
-                          onChange={(teamId) => {
-                            setSelectedTeamId(teamId || "");
-                            const selectedTeam = teams.find(
-                              (u) => u.id === teamId
-                            );
-                          }}>
-                          <Combobox.Input
-                            onChange={(e) => setTeamQuery(e.target.value)}
-                            displayValue={(teamId) => {
-                              const u = teams.find((u) => u.id === teamId);
-                              return u ? `${u.name}` : "";
-                            }}
-                            className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
-                            placeholder='Select a team'
-                            required
-                          />
-                          <Combobox.Options className='absolute z-10 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg'>
-                            {filteredTeams.map((team) => (
-                              <Combobox.Option
-                                key={team.id}
-                                value={team.id}
-                                className="cursor-pointer select-none px-4 py-2 hover:bg-blue-50 hover:text-blue-900">
-                                {team.name}
-                              </Combobox.Option>
-                            ))}
-                          </Combobox.Options>
-                        </Combobox>
-                      </div>
-
-                      
-
-                      {/* Service Filter */}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
-                        <Listbox value={filters.service} onChange={(value) => updateFilter("service", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.service === "all" ? "All Services" : filters.service}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                <Listbox.Option
-                                  value="all"
-                                  className={({ active }) =>
-                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                    }`
-                                  }
-                                >
-                                  All Services
-                                </Listbox.Option>
-                                {getUniqueValues("service").map((service) => (
-                                  <Listbox.Option
-                                    key={service}
-                                    value={service}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {service}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
-                      </div> */}
-
-                      {/* Team Filter */}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Team</label>
-                        <Listbox value={filters.team} onChange={(value) => updateFilter("team", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.team === "all" ? "All Teams" : filters.team}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                <Listbox.Option
-                                  value="all"
-                                  className={({ active }) =>
-                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                    }`
-                                  }
-                                >
-                                  All Teams
-                                </Listbox.Option>
-                                {getUniqueValues("team").map((team) => (
-                                  <Listbox.Option
-                                    key={team}
-                                    value={team}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {team}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
-                      </div> */}
-
-                      {/* Frequency Filter */}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
-                        <Listbox value={filters.frequency} onChange={(value) => updateFilter("frequency", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.frequency === "all"
-                                  ? "All Frequencies"
-                                  : filters.frequency.charAt(0).toUpperCase() + filters.frequency.slice(1)}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                <Listbox.Option
-                                  value="all"
-                                  className={({ active }) =>
-                                    `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                      active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                    }`
-                                  }
-                                >
-                                  All Frequencies
-                                </Listbox.Option>
-                                {getUniqueValues("frequency").map((frequency) => (
-                                  <Listbox.Option
-                                    key={frequency}
-                                    value={frequency}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {frequency.charAt(0).toUpperCase() + frequency.slice(1)}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
-                      </div> */}
-
-                      {/* Date Range Filter */}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                        <Listbox value={filters.dateRange} onChange={(value) => updateFilter("dateRange", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.dateRange === "all"
-                                  ? "All Dates"
-                                  : filters.dateRange.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                {[
-                                  { value: "all", label: "All Dates" },
-                                  { value: "today", label: "Today" },
-                                  { value: "this_week", label: "This Week" },
-                                  { value: "this_month", label: "This Month" },
-                                  { value: "last_30_days", label: "Last 30 Days" },
-                                ].map((option) => (
-                                  <Listbox.Option
-                                    key={option.value}
-                                    value={option.value}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {option.label}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
-                      </div> */}
-
-                      {/* Amount Range Filter */}
-                      {/* <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Amount Range</label>
-                        <Listbox value={filters.amountRange} onChange={(value) => updateFilter("amountRange", value)}>
-                          <div className="relative">
-                            <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
-                              <span className="block truncate">
-                                {filters.amountRange === "all"
-                                  ? "All Amounts"
-                                  : filters.amountRange === "1000+"
-                                    ? "$1000+"
-                                    : `$${filters.amountRange}`}
-                              </span>
-                              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                <ChevronDownIcon className="h-5 w-5 text-gray-400" />
-                              </span>
-                            </Listbox.Button>
-                            <Transition
-                              as={Fragment}
-                              leave="transition ease-in duration-100"
-                              leaveFrom="opacity-100"
-                              leaveTo="opacity-0"
-                            >
-                              <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                {[
-                                  { value: "all", label: "All Amounts" },
-                                  { value: "0-100", label: "$0 - $100" },
-                                  { value: "100-500", label: "$100 - $500" },
-                                  { value: "500-1000", label: "$500 - $1000" },
-                                  { value: "1000+", label: "$1000+" },
-                                ].map((option) => (
-                                  <Listbox.Option
-                                    key={option.value}
-                                    value={option.value}
-                                    className={({ active }) =>
-                                      `relative cursor-default select-none py-2 pl-3 pr-9 ${
-                                        active ? "bg-indigo-600 text-white" : "text-gray-900"
-                                      }`
-                                    }
-                                  >
-                                    {option.label}
-                                  </Listbox.Option>
-                                ))}
-                              </Listbox.Options>
-                            </Transition>
-                          </div>
-                        </Listbox>
-                      </div> */}
-                    </div>
-
-                    {/* Active Filters Display */}
-                    {getActiveFilterCount() > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="flex flex-wrap gap-2">
-                          <span className="text-sm font-medium text-gray-700">Active filters:</span>
-                          {filters.search && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              Search: "{filters.search}"
-                              <button
-                                onClick={() => updateFilter("search", "")}
-                                className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
-                              >
-                                <XMarkIcon className="w-3 h-3" />
-                              </button>
-                            </span>
-                          )}
-                          {Object.entries(filters).map(([key, value]) => {
-                            if (key === "search" || value === "all") return null
-                            return (
-                              <span
-                                key={key}
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
-                              >
-                                {key.charAt(0).toUpperCase() + key.slice(1)}:{" "}
-                                {typeof value === "string"
-                                  ? value.includes("_")
-                                    ? value.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
-                                    : value.charAt(0).toUpperCase() + value.slice(1)
-                                  : value}
-                                <button
-                                  onClick={() => updateFilter(key, "all")}
-                                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-600"
-                                >
-                                  <XMarkIcon className="w-3 h-3" />
-                                </button>
-                              </span>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Transition>
-              </>
-            )}
-          </Disclosure>
         </div>
       </div>
 
@@ -913,6 +510,29 @@ const BookingsList: React.FC = () => {
                 ))}
               </select>
               <span>per page</span>
+            </div>
+            <div className="inline-flex space-x-1">
+
+            </div>
+            <div className="flex items-center space-x-2 text-sm">
+              <label htmlFor="go-to-page" className="text-gray-700">Go to page:</label>
+              <input
+                id="go-to-page"
+                type="number"
+                min={1}
+                max={pagination.total_pages}
+                className="w-25 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder={`${page} / ${pagination.total_pages}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const value = Number((e.target as HTMLInputElement).value);
+                    if (value >= 1 && value <= pagination.total_pages) {
+                      setPage(value);
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
             </div>
             <div className="inline-flex space-x-2">
               <button

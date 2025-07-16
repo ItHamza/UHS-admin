@@ -105,7 +105,7 @@ const OneTimeServicesAssignment: React.FC = () => {
     startTransition(async () => {
       try {
         const service_ids = ["7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939", "3f99ad31-7f21-4298-b0d6-50101165e7ef"]
-        const bookings_data = await BookingAction(page, itemsPerPage, service_ids, "", "");
+        const bookings_data = await BookingAction(page, itemsPerPage, service_ids, "");
         debugger;
         const filteredBooking = bookings_data.data.filter((b: any) => b.service.name !== "Deep Cleaning" || b.service.name !== "Residential Cleaning")
         setBookings(bookings_data.data);
