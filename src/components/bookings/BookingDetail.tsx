@@ -249,6 +249,20 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
                               )}
                             </p>
                           </div>
+                          {/* <div className=" h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-sm font-medium text-purple-800">{service.team.name}</span>
+                          </div> */}
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              {service.status && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-blue-200`}
+                                >
+                                  TEAM: {service.team.name}
+                                </span>
+                              )}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-4 gap-4">

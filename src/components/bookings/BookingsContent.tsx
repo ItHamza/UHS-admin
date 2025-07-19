@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Tab } from "@headlessui/react"
-import BookingsHeader from "./BookingsHeader"
 import BookingsList from "./BookingsList"
 import OneTimeServicesAssignment from "./OneTimeAssignmnet"
 import NewBookingsHeader from "./NewBookingHeader"
@@ -47,19 +46,11 @@ export default function BookingsContentEnhanced() {
           <Tab.Panels className="mt-6">
             <Tab.Panel className="rounded-xl bg-white p-3 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2">
               <div className="space-y-4">
-                <div className="border-b pb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Package Bookings</h2>
-                  <p className="text-sm text-gray-600 mt-1">Manage complete booking packages with multiple services</p>
-                </div>
                 <BookingsList />
               </div>
             </Tab.Panel>
             <Tab.Panel className="rounded-xl bg-white p-3 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2">
               <div className="space-y-4">
-                <div className="border-b pb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">One Time Services</h2>
-                  <p className="text-sm text-gray-600 mt-1">Search and manage one time service appointments</p>
-                </div>
                 <OneTimeServicesAssignment />
               </div>
             </Tab.Panel>

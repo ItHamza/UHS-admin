@@ -7,6 +7,7 @@ import EditCustomerModal from "./EditCustomerDailog";
 import { UserDeleteAction } from "@/actions/users";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
 interface Customer {
   id: string;
@@ -36,10 +37,24 @@ const CustomersList: React.FC = () => {
   const [showEditUser, setShowEditUser] = useState<boolean>(false);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  const [searchInput, setSearchInput] = useState(''); // local input
+  const [search, setSearch] = useState("");
+
+    // Enhanced filter states
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "all",
+    service: "all",
+    team: "all",
+    frequency: "all",
+    dateRange: "all",
+    amountRange: "all",
+  })
 
   const { data, isPending } = useQuery<{ data: Customer[], pagination: any }>({
-    queryKey: ['customers', page, itemsPerPage],
-    queryFn: () => fetch(`/api/customer?page=${page}&limit=${itemsPerPage}`).then(res => res.json())
+    queryKey: ['customers', page, itemsPerPage, search],
+    queryFn: () => fetch(`/api/customer?page=${page}&limit=${itemsPerPage}&search=${search}`).then(res => res.json())
   })
 
   const customers = data?.data ?? []
@@ -114,19 +129,97 @@ const CustomersList: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['customers'] })
   }
 
+  
+  const getActiveFilterCount = () => {
+    return (
+      Object.entries(filters).filter(([key, value]) => key !== "search" && value !== "all").length +
+      (filters.search ? 1 : 0)
+    )
+  }
+
+  
+  const clearAllFilters = () => {
+    setFilters({
+      search: "",
+      status: "all",
+      service: "all",
+      team: "all",
+      frequency: "all",
+      dateRange: "all",
+      amountRange: "all",
+    })
+  }
+
 
   return (
     <div className='bg-white rounded-lg shadow overflow-hidden'>
-      {isPending ? (
-        <ShimmerHeader />
-      ) : (
-        <div className='flex justify-between items-center p-4 border-b'>
-          <h2 className='text-lg font-medium'>Customer Directory</h2>
-          <span className='text-sm text-gray-500'>
-            {customers?.length ?? 0} customers
-          </span>
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Customer</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Manage customers ({customers?.length} results)
+              </p>
+            </div>
+
+            {/* Filter Toggle Button */}
+            <div className="flex items-center space-x-3">
+              {/* <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <FunnelIcon className="h-4 w-4 mr-2" />
+                Filters
+                {getActiveFilterCount() > 0 && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    {getActiveFilterCount()}
+                  </span>
+                )}
+                <ChevronDownIcon className={`ml-2 h-4 w-4 transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
+              </button> */}
+
+              {getActiveFilterCount() > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center px-3 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <XCircleIcon className="h-4 w-4 mr-1" />
+                  Clear All
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchInput}
+              placeholder="Search by customer name, phone & email"
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setSearch(searchInput);
+                }
+              }}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+
+            {search && (
+              <button
+                onClick={() => setSearchInput("")}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <XCircleIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
         </div>
-      )}
+      </div>
       {isPending ? (
         <ShimmerTable />
       ) : (

@@ -324,30 +324,31 @@ const ReschedulePackageModal: React.FC<{
             <div
               key={service.id}
               className={`
-                p-3 border rounded-md cursor-pointer transition-colors
-                ${
-                  selectedService?.id === service.id
-                    ? "border-blue-500 bg-blue-50"
-                    : "hover:bg-gray-50"
-                }
+                p-3 border rounded-md transition-colors
+                ${selectedService?.id === service.id ? "border-blue-500 bg-blue-50" : "hover:bg-gray-50"}
+                ${!(service.status === "scheduled" || service.status === "active") ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
               `}
               onClick={() => {
-                handleServiceSelect(service);
-                handleServiceDateSelect(service);
-              }}>
+                if (service.status === "scheduled" || service.status === "active") {
+                  handleServiceSelect(service);
+                  handleServiceDateSelect(service);
+                }
+              }}
+            >
               <div className='flex justify-between items-center'>
                 <div>
                   <p className='font-medium'>
                     {moment(service.date).format("DD MMM YYYY")},{" "}
-                    {formatTime(service.start_time)} -{" "}
-                    {formatTime(service.end_time)}
+                    {formatTime(service.start_time)} - {formatTime(service.end_time)}
                   </p>
                 </div>
+                  <p className='text-sm text-gray-500 capitalize'>Status: {service.status}</p>
                 {selectedService?.id === service.id && (
                   <div className='h-4 w-4 rounded-full bg-blue-500' />
                 )}
               </div>
             </div>
+
           ))}
         </div>
       )}

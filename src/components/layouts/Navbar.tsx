@@ -8,6 +8,15 @@ import {
   RiUserLine,
 } from "react-icons/ri";
 
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from '@clerk/nextjs'
+
+
 const Navbar: React.FC = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -39,42 +48,12 @@ const Navbar: React.FC = () => {
             </button>
 
             {/* Profile dropdown */}
-            <div className='relative'>
-              <button
-                className='flex items-center space-x-2 focus:outline-none'
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}>
-                <div className='h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center'>
-                  <span className='text-sm font-medium text-white'>UA</span>
-                </div>
-                <div className='hidden md:block text-left'>
-                  <div className='text-sm font-medium text-gray-700'>
-                    Admin User
-                  </div>
-                  <div className='text-xs text-gray-500'>admin@urban.com</div>
-                </div>
-                <RiArrowDownSLine className='hidden md:block h-5 w-5 text-gray-400' />
-              </button>
-
-              {profileDropdownOpen && (
-                <div className='origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10'>
-                  <a
-                    href='#'
-                    className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'>
-                    Your Profile
-                  </a>
-                  <a
-                    href='#'
-                    className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'>
-                    Settings
-                  </a>
-                  <a
-                    href='#'
-                    className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'>
-                    Sign out
-                  </a>
-                </div>
-              )}
-            </div>
+            <SignedOut>
+              <SignInButton mode="redirect" forceRedirectUrl="/dashboard"  />
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
           </div>
         </div>
       </div>

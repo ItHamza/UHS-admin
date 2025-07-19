@@ -33,14 +33,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page')) || 1;
     const limit = Number(searchParams.get('limit')) || 10;
-    const email = searchParams.get('email') || '';
+    const search = searchParams.get('search') || '';
 
     const params = new URLSearchParams();
     params.append('page', String(page));
     params.append('limit', String(limit));
-    params.append('email', String(email));
-    params.append('role', 'user')
-  
+    if (search === "" || search === undefined){
+      params.append('role', 'user')
+    } else {
+      params.append('search', String(search));
+    }
     const response = await fetch(`${BASE_URL}/users?${params.toString()}`);
     if (!response.ok) {
       throw new Error("Failed to fetch users");

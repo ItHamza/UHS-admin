@@ -20,24 +20,11 @@ const BookingsList: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [bookings, setBookings] = useState<Booking[]>([])
-  const [isPending, startTransition] = useTransition()
+  // const [isPending, startTransition] = useTransition()
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchInput, setSearchInput] = useState(''); // local input
   const [search, setSearch] = useState("");
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    per_page: 10,
-    total: 0,
-    total_pages: 0,
-    has_next_page: false,
-    has_previous_page: false,
-    next_page: null,
-    previous_page: null,
-    showing_from: 0,
-    showing_to: 0,
-  });
   
   
    // Enhanced filter states
@@ -52,20 +39,26 @@ const BookingsList: React.FC = () => {
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
+  const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"];
 
-  useEffect(() => {
-    startTransition(async () => {
-      try {
-        const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"]
-        const bookings_data = await BookingAction(page, itemsPerPage, service_id, search)
-        console.log("bookingdata", bookings_data)
-        setBookings(bookings_data.data)
-        setPagination(bookings_data.pagination)
-      } catch (error) {
-        console.error("Failed to fetch bookings:", error)
-      }
-    })
-  }, [page, itemsPerPage, search])
+  const { data, isPending } = useQuery<{ data: Booking[], pagination: any }>({
+    queryKey: ['bookings', page, itemsPerPage, search],
+    queryFn: () => fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&service_id=${service_id}&search=${search}`).then(res => res.json())
+  })
+
+  const bookings = data?.data ?? []
+  const pagination = data?.pagination ?? {
+    current_page: 1,
+    per_page: 10,
+    total: 0,
+    total_pages: 0,
+    has_next_page: false,
+    has_previous_page: false,
+    next_page: null,
+    previous_page: null,
+    showing_from: 0,
+    showing_to: 0,
+  }
 
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -265,27 +258,15 @@ const BookingsList: React.FC = () => {
         <div className="flex flex-col space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Bookings</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Package Bookings</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Manage and view all your bookings ({filteredBookings.length} results)
+                Manage complete booking packages with multiple services ({filteredBookings.length} results)
               </p>
             </div>
 
             {/* Filter Toggle Button */}
             <div className="flex items-center space-x-3">
-              {/* <button
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                <FunnelIcon className="h-4 w-4 mr-2" />
-                Filters
-                {getActiveFilterCount() > 0 && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                    {getActiveFilterCount()}
-                  </span>
-                )}
-                <ChevronDownIcon className={`ml-2 h-4 w-4 transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
-              </button> */}
+
 
               {getActiveFilterCount() > 0 && (
                 <button

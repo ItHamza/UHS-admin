@@ -10,6 +10,8 @@ import moment from "moment"
 import { AssignTeamSlotAction, OneTimeServiceTeamAvailabilityAction } from "@/actions/team-availability"
 import toast from "react-hot-toast"
 import PricingAction, { SpecialPricingAction } from "@/actions/pricing"
+import { useQuery } from "@tanstack/react-query"
+import { MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline"
 
 // Types based on your API response
 interface TimeSlot {
@@ -76,18 +78,36 @@ interface SelectedSlot {
 }
 
 const OneTimeServicesAssignment: React.FC = () => {
-  const [bookings, setBookings] = useState<PropBooking[]>([])
   const [selectedBooking, setSelectedBooking] = useState<PropBooking | null>(null)
   const [teamAvailability, setTeamAvailability] = useState<TeamAvailabilityResponse | null>(null)
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
   const [loading, setLoading] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const [assigning, setAssigning] = useState(false)
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list")
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [pagination, setPagination] = useState({
+
+
+  const [search, setSearch] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const service_ids = [
+    "78698431-bd16-429a-9278-4390d59497c9",
+    "3f99ad31-7f21-4298-b0d6-50101165e7ef",
+    "7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939",
+  ].map(id => `service_id=${id}`).join("&")
+
+
+  const { data, isPending } = useQuery<{ data: PropBooking[]; pagination: any }>({
+    queryKey: ['oneTimeBookings', page, itemsPerPage, search],
+    queryFn: () =>
+      fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&${service_ids}&search=${search}`)
+        .then(res => res.json()),
+  })
+
+  const bookings = data?.data || []
+
+  const pagination = data?.pagination || {
     current_page: 1,
     per_page: 10,
     total: 0,
@@ -98,23 +118,7 @@ const OneTimeServicesAssignment: React.FC = () => {
     previous_page: null,
     showing_from: 0,
     showing_to: 0,
-  });
-
-
-  useEffect(() => {
-    startTransition(async () => {
-      try {
-        const service_ids = ["7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939", "3f99ad31-7f21-4298-b0d6-50101165e7ef"]
-        const bookings_data = await BookingAction(page, itemsPerPage, service_ids, "");
-        debugger;
-        const filteredBooking = bookings_data.data.filter((b: any) => b.service.name !== "Deep Cleaning" || b.service.name !== "Residential Cleaning")
-        setBookings(bookings_data.data);
-        setPagination(bookings_data.pagination)
-      } catch (error) {
-        console.error("Failed to fetch bookings:", error);
-      }
-    });
-  }, [page, itemsPerPage])
+  }
 
   const fetchTeamAvailability = async (booking: PropBooking) => {
     setLoading(true)
@@ -124,7 +128,7 @@ const OneTimeServicesAssignment: React.FC = () => {
         const pricingResponse = await PricingAction()
         const service_type = pricingResponse.find((p: PricingRule) =>
                               p.frequency === booking.frequency &&
-                              p.residenceType.type === booking.residence_type.type
+                              p.residenceType?.type === booking.residence_type?.type
                             );
         debugger;
         duration_value = service_type?.duration_value
@@ -270,11 +274,47 @@ const OneTimeServicesAssignment: React.FC = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">One-Time Services Assignment</h1>
-            <p className="text-gray-600">Assign teams and time slots to pending one-time service bookings</p>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">One-Time Bookings</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Manage service bookings ({bookings.length} results)
+                  </p>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchInput}
+                  placeholder="Search by customer name, phone, email, booking ID, service..."
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setSearch(searchInput);
+                    }
+                  }}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                {search && (
+                  <button
+                    onClick={() => {
+                      setSearchInput("")
+                      setSearch("")
+                    }}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <XCircleIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -391,7 +431,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                         <h4 className="font-medium text-gray-900 mb-2">Location</h4>
                         <div className="text-sm text-gray-600">
                           <div>
-                            {selectedBooking.appartment_number}, {selectedBooking.residence_type.type}
+                            {selectedBooking.appartment_number}, {selectedBooking.residence_type?.type}
                           </div>
                           <div>
                             {selectedBooking.property.name}, {selectedBooking.district.name}
@@ -665,10 +705,8 @@ const OneTimeServicesAssignment: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
         </div>
       </div>
-
       {/* Pagination */}
       <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
@@ -696,6 +734,29 @@ const OneTimeServicesAssignment: React.FC = () => {
                 ))}
               </select>
               <span>per page</span>
+            </div>
+            <div className="inline-flex space-x-1">
+
+            </div>
+            <div className="flex items-center space-x-2 text-sm">
+              <label htmlFor="go-to-page" className="text-gray-700">Go to page:</label>
+              <input
+                id="go-to-page"
+                type="number"
+                min={1}
+                max={pagination.total_pages}
+                className="w-25 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder={`${page} / ${pagination.total_pages}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const value = Number((e.target as HTMLInputElement).value);
+                    if (value >= 1 && value <= pagination.total_pages) {
+                      setPage(value);
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }
+                }}
+              />
             </div>
             <div className="inline-flex space-x-2">
               <button
