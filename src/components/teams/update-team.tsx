@@ -313,7 +313,11 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
       case 4:
         return dataLoaded
       case 5:
-        return teamData.start_date && teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
+        if (isUpdateable){
+          return teamData.start_date && teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
+        }else{
+          return teamData.work_start_time && teamData.work_end_time && teamData.break_start_time && teamData.break_end_time
+        }
       default:
         return false
     }
@@ -652,7 +656,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Selected Services:</label>
                     <div className="flex flex-wrap gap-2">
-                      {teamData.service_ids.map((serviceId) => (
+                      {teamData.service_ids?.map((serviceId) => (
                         <span
                           key={serviceId}
                           className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"

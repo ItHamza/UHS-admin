@@ -130,14 +130,14 @@ export async function PUT(req: NextRequest) {
       work_end_time,
       break_start_time,
       break_end_time,
-      off_days,
+      // off_days,
       area_ids,
       district_ids,
       property_ids,
       residence_type_ids,
     } = await req.json();
 
-    if (!id || !name || !user_ids?.length || !start_date || !work_start_time || !work_end_time) {
+    if (!id || !name || !user_ids?.length || !work_start_time || !work_end_time) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
         { status: 400 }
@@ -158,12 +158,21 @@ export async function PUT(req: NextRequest) {
       work_end_time,
       break_start_time,
       break_end_time,
-      off_days,
+      // off_days,
       area_ids,
       district_ids,
       property_ids,
       residence_type_ids,
     };
+
+    if (
+      data.start_date === null ||
+      data.start_date === undefined ||
+      (typeof data.start_date === "string" && data.start_date.trim() === "")
+    ) {
+      delete data.start_date;
+    }
+
     console.log(data)
     const res = await fetch(`${BASE_URLV2}/teams/${id}`, {
       method: "PUT",

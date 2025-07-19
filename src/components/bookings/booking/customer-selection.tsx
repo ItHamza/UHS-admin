@@ -174,7 +174,7 @@ export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
               }
             }}
             displayValue={(userId) => {
-              const u = users.find((u) => u.id === userId);
+              const u = mergedUsers.find((u) => u.id === userId);
               return u ? `${u.name} - ${u.phone}` : '';
             }}
             className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition`}
