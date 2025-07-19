@@ -91,18 +91,36 @@ const OneTimeServicesAssignment: React.FC = () => {
 
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const service_ids = [
-    "78698431-bd16-429a-9278-4390d59497c9",
-    "3f99ad31-7f21-4298-b0d6-50101165e7ef",
-    "7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939",
-  ].map(id => `service_id=${id}`).join("&")
+  // const service_ids = [
+  //   "78698431-bd16-429a-9278-4390d59497c9",
+  //   "3f99ad31-7f21-4298-b0d6-50101165e7ef",
+  //   "7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939",
+  // ]?.map(id => `service_id=${id}`).join("&")
 
+  const service_ids = [
+  "78698431-bd16-429a-9278-4390d59497c9",
+  "3f99ad31-7f21-4298-b0d6-50101165e7ef",
+  "7e7b5232-ca6d-4bfe-890f-f8fcdf1a4939",
+]
+
+  // const { data, isPending } = useQuery<{ data: PropBooking[]; pagination: any }>({
+  //   queryKey: ['oneTimeBookings', page, itemsPerPage, search],
+  //   queryFn: () =>
+  //     fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&${service_ids}&search=${search}`)
+  //       .then(res => res.json()),
+  // })
 
   const { data, isPending } = useQuery<{ data: PropBooking[]; pagination: any }>({
-    queryKey: ['oneTimeBookings', page, itemsPerPage, search],
-    queryFn: () =>
-      fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&${service_ids}&search=${search}`)
-        .then(res => res.json()),
+    queryKey: ['bookings', page, itemsPerPage, search, service_ids],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.append('page', String(page))
+      params.append('limit', String(itemsPerPage))
+      params.append('search', search)
+      service_ids.forEach(id => params.append('service_id', id))
+
+      return fetch(`/api/booking?${params.toString()}`).then(res => res.json())
+    }
   })
 
   const bookings = data?.data || []
@@ -134,20 +152,20 @@ const OneTimeServicesAssignment: React.FC = () => {
         duration_value = service_type?.duration_value
       } else {
         const subServices = booking.bookingItems
-                .map(item => {
+                ?.map(item => {
                   const quantity = item.quantity;
                   const duration = item.subServiceItem?.time_duration_in_minutes;
                   return quantity && duration ? [quantity, duration] : null;
                 })
                 .filter(Boolean) as [number, number][];
-        duration_value = subServices.reduce((sum, [quantity, duration]) => sum + quantity * duration, 0);
+        duration_value = subServices?.reduce((sum, [quantity, duration]) => sum + quantity * duration, 0);
       }
       
       
       const updatedBoooking = {...booking, serviceMinutes: duration_value}
       setSelectedBooking(updatedBoooking)
       const data = {
-        district_id: booking.district_id,
+        district_id: booking.district.id,
         start_date: booking.date,
         duration: duration_value || 1
       }
@@ -206,7 +224,7 @@ const OneTimeServicesAssignment: React.FC = () => {
       }
 
       // Update booking status
-      // setBookings((prev) => prev.map((b) => (b.id === selectedBooking.id ? { ...b, status: "assigned" } : b)))
+      // setBookings((prev) => prev?.map((b) => (b.id === selectedBooking.id ? { ...b, status: "assigned" } : b)))
 
       // Reset selection
       setSelectedBooking(null)
@@ -223,7 +241,7 @@ const OneTimeServicesAssignment: React.FC = () => {
     if (!teamAvailability) return []
 
     return teamAvailability.data.teams.flatMap((team) =>
-      team.daily_availability.filter((day) => day.available && day.timeslots.length > 0).map((day) => day.date),
+      team.daily_availability.filter((day) => day.available && day.timeslots.length > 0)?.map((day) => day.date),
     )
   }
 
@@ -234,7 +252,7 @@ const OneTimeServicesAssignment: React.FC = () => {
       team.daily_availability
         .filter((day) => day.date === date && day.available)
         .flatMap((day) =>
-          day.timeslots.map((slot) => ({
+          day.timeslots?.map((slot) => ({
             team,
             slot,
           })),
@@ -322,7 +340,7 @@ const OneTimeServicesAssignment: React.FC = () => {
             {isPending ? (
               <div className="">
                 <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {Array.from({ length: 5 })?.map((_, i) => (
                     <ShimmerCard key={i} />
                   ))}
                 </div>
@@ -337,7 +355,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                     </p>
                   </div>
                   <div className="divide-y max-h-150 overflow-y-auto">
-                    {bookings.map((booking) => {
+                    {bookings?.map((booking) => {
                       const isAssigned = !!booking.team_id;
                       const isSelected = selectedBooking?.id === booking.id;
 
@@ -460,7 +478,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                       <div className="md:col-span-2 mt-4">
                         <h4 className="font-medium text-gray-900 mb-2">Sub-Services</h4>
                         <div className="space-y-3 text-sm">
-                          {selectedBooking.bookingItems.map((item, index) => (
+                          {selectedBooking.bookingItems?.map((item, index) => (
                             <div key={index} className="border border-gray-200 rounded-md p-3 bg-gray-50">
                               <div className="flex justify-between">
                                 <span className="text-gray-800 font-semibold">{item.subServiceItem?.name}</span>
@@ -516,8 +534,8 @@ const OneTimeServicesAssignment: React.FC = () => {
                           </div>
                         </div>
                         <div className="mt-2 text-sm text-gray-600">
-                          {teamAvailability.data.summary.teams_with_availability} teams available •{" "}
-                          {teamAvailability.data.teams.reduce(
+                          {teamAvailability?.data?.summary?.teams_with_availability} teams available •{" "}
+                          {teamAvailability?.data?.teams?.reduce(
                             (acc, team) => acc + team.availability_summary.total_timeslots,
                             0,
                           )}{" "}
@@ -529,7 +547,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                         {viewMode === "list" ? (
                           // List View
                           <div className="space-y-6">
-                            {teamAvailability.data.teams.map((team) => (
+                            {teamAvailability?.data?.teams?.map((team) => (
                               <div key={team.team_id} className="border rounded-lg p-4">
                                 <div className="flex justify-between items-start mb-4">
                                   <div>
@@ -549,7 +567,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                   {team.daily_availability
                                     .filter((day) => day.available && day.timeslots.length > 0)
-                                    .map((day) => (
+                                    ?.map((day) => (
                                       <div key={day.date} className="border rounded p-3">
                                         <div className="font-medium text-sm mb-2">
                                           {formatDate(day.date)}
@@ -558,7 +576,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                                           )}
                                         </div>
                                         <div className="space-y-1">
-                                          {day.timeslots.map((slot, idx) => (
+                                          {day.timeslots?.map((slot, idx) => (
                                             <button
                                               key={idx}
                                               onClick={() => handleSlotSelect(team, day.date, slot)}
@@ -587,7 +605,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                           // Calendar View
                           <div className="space-y-4">
                             <div className="grid grid-cols-7 gap-2">
-                              {teamAvailability.data.summary.dates_checked.map((date) => {
+                              {teamAvailability.data.summary.dates_checked?.map((date) => {
                                 const availableSlots = getTimeSlotsForDate(date)
                                 const isPreferred = selectedBooking.date === date
                                 const isSelected = selectedDate === date
@@ -620,7 +638,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                               <div className="border-t pt-4">
                                 <h4 className="font-medium mb-3">Available slots for {formatDate(selectedDate)}</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {getTimeSlotsForDate(selectedDate).map(({ team, slot }, idx) => (
+                                  {getTimeSlotsForDate(selectedDate)?.map(({ team, slot }, idx) => (
                                     <button
                                       key={idx}
                                       onClick={() => handleSlotSelect(team, selectedDate, slot)}
@@ -729,7 +747,7 @@ const OneTimeServicesAssignment: React.FC = () => {
                 }}
                 className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                {[10, 20, 50, 100].map((n) => (
+                {[10, 20, 50, 100]?.map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>

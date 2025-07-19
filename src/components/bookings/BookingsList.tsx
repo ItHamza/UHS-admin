@@ -39,12 +39,28 @@ const BookingsList: React.FC = () => {
   })
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"];
 
-  const { data, isPending } = useQuery<{ data: Booking[], pagination: any }>({
-    queryKey: ['bookings', page, itemsPerPage, search],
-    queryFn: () => fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&service_id=${service_id}&search=${search}`).then(res => res.json())
-  })
+  // const service_id = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"];
+
+  // const { data, isPending } = useQuery<{ data: Booking[], pagination: any }>({
+  //   queryKey: ['bookings', page, itemsPerPage, search],
+  //   queryFn: () => fetch(`/api/booking?page=${page}&limit=${itemsPerPage}&service_id=${service_id}&search=${search}`).then(res => res.json())
+  // })
+
+  const service_ids = ["a2862891-724c-4d9b-8033-c086a3f8a7d4"]
+
+const { data, isPending } = useQuery<{ data: Booking[], pagination: any }>({
+  queryKey: ['bookings', page, itemsPerPage, search, service_ids],
+  queryFn: () => {
+    const params = new URLSearchParams()
+    params.append('page', String(page))
+    params.append('limit', String(itemsPerPage))
+    params.append('search', search)
+    service_ids.forEach(id => params.append('service_id', id))
+
+    return fetch(`/api/booking?${params.toString()}`).then(res => res.json())
+  }
+})
 
   const bookings = data?.data ?? []
   const pagination = data?.pagination ?? {

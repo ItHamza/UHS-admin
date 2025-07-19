@@ -4,14 +4,13 @@ import moment from "moment";
 const BASE_URL =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
 
-async function fetchBookings(page: number, limit: number, service_id: string[], search: string) {
+async function fetchBookings(page: number, limit: number, service_ids: string[], search: string) {
   const params = new URLSearchParams();
   params.append('page', String(page));
   params.append('limit', String(limit));
   params.append('search', String(search));
-  service_id.forEach(id => {
-    params.append('service_id', id);
-  });
+  service_ids.forEach(id => params.append('service_id', id))
+
   const response = await fetch(`${BASE_URL}/bookings/bookings?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch bookings");
@@ -81,9 +80,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get('page')) || 1;
     const limit = Number(searchParams.get('limit')) || 10;
-    const service_id = searchParams.getAll('service_id');
-    const search = String(searchParams.get('search'))
-    const bookings = await fetchBookings(page, limit, service_id, search);
+    const search = searchParams.get('search') || ""
+    const service_id_raw = searchParams.getAll('service_id')
+    const service_ids = service_id_raw.flatMap(id => id.split(',')) // handles if client sent comma string
+
+    const bookings = await fetchBookings(page, limit, service_ids, search);
 
     const transformedBookings = await Promise.all(
       bookings.data.map(async (booking: any) => {
