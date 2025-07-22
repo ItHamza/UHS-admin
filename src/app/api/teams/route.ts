@@ -5,18 +5,27 @@ const BASE_URL =
 const BASE_URLV2 =
   "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v2";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const response = await fetch(`${BASE_URLV2}/teams`);
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get('page')) || 1;
+    const limit = Number(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || ""
+    const params = new URLSearchParams();
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+    // params.append('search', String(search));
+    const response = await fetch(`${BASE_URLV2}/teams?${params.toString()}`);
     if (!response.ok) {
       throw new Error("Failed to fetch users");
     }
-    const { data: teams } = await response.json();
+    const teams = await response.json();
 
     return NextResponse.json({
       success: true,
       message: "Teams fetched successfully",
-      data: teams,
+      data: teams.data,
+      pagination: teams.pagination
     });
   } catch (error: any) {
     console.error("Error fetching or transforming users:", error);

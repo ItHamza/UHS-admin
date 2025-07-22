@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import Loader from "../ui/loader";
 import ReschedulesAction from "@/actions/reschedule";
 import { formatTimeTo24Hrs } from "@/utils/format-time";
+import PricingAction from "@/actions/pricing";
 
 interface Service {
   id: string;
@@ -161,8 +162,8 @@ const ReschedulePackageModal: React.FC<{
     const fetchServicesAndAvailabilities = async () => {
       try {
         setLoading(true);
-        setServices(pkg.services.data);
-        setTeamAvailabilities(pkg.services);
+        setServices(pkg.teamAvailabilities);
+        setTeamAvailabilities([]);
       } catch (error) {
         console.error("Error fetching services and availabilities:", error);
       } finally {
@@ -193,10 +194,16 @@ const ReschedulePackageModal: React.FC<{
       if (selectedAvailability.team.id && date) {
         setTimeSlotLoading(true);
         // Call the server action with necessary data
+        const pricingResponse = await PricingAction()
+        const service_type = pricingResponse.find((p: PricingRule) =>
+                              p.frequency === pkg.frequency &&
+                              p.residenceType?.type === pkg.residenceType || pkg.residence_type?.type
+                            );
+        const duration_value = service_type?.duration_value
         const response = await RescheduleTimeslotsAction(
           selectedAvailability.team.id,
           format(date, "yyyy-MM-dd"),
-          pkg.serviceMinutes
+          pkg.serviceMinutes || duration_value || 60
         );
 
         // Transform the response into time slots format
@@ -460,8 +467,8 @@ const ReschedulePackageModal: React.FC<{
       setLoading(true);
       const response = await CalendarAction(
         selectedAvailability?.date as string,
-        pkg.end_date, pkg.id, pkg.team_id,
-        pkg.user_id
+        pkg.end_date, pkg.id, pkg.team?.id,
+        pkg.user?.id
       );
       const unavailableDates = Object.entries(response.data)
         .filter(([_, isAvailable]) => !isAvailable) // Filter out unavailable dates
@@ -470,7 +477,7 @@ const ReschedulePackageModal: React.FC<{
       setLoading(false);
       setCurrentStep(RescheduleStep.SELECT_DATE);
     } catch (error) {
-      console.error("Error fetching properties:", error);
+      console.error("Error fetching calender:", error);
       setLoading(false);
     }
   };
@@ -526,9 +533,9 @@ const ReschedulePackageModal: React.FC<{
       <div className='w-full'>
         <div className='text-sm text-gray-500 mb-4'>
           <p>
-            Selected service: {selectedAvailability.team.name} on{" "}
-            {formatDate(selectedAvailability.date)}
+            Selected service: {formatDate(selectedAvailability.date)}
           </p>
+          <p> Team: {selectedAvailability.team.name}</p>
           <p className='mt-1'>
             Please select a new date. Available dates include:{" "}
             {availableDatesStr}

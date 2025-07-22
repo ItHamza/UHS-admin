@@ -1,7 +1,11 @@
 import { apiRequest } from "../api";
 
-export const getTeams = async () => {
-  return apiRequest<any>("/teams");
+export const getTeams = async (page: number, limit: number, search: string) => {
+  const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('limit', String(limit));
+  params.append('search', String(search));
+  return apiRequest<any>(`/teams?${params.toString()}`);
 };
 
 export const getTeamById = async (id: string) => {

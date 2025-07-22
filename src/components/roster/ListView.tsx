@@ -86,8 +86,8 @@ export default function RosterList() {
   // Fetch teams
   const fetchTeams = async () => {
     try {
-      const data = await TeamsAction()
-      setTeams(data)
+      const teams = await TeamsAction(1, 20, '')
+      setTeams(teams.data)
     } catch (error) {
       console.error("Failed to fetch teams:", error)
     }

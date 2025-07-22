@@ -109,7 +109,7 @@ const CancelModal: React.FC<{
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold'>Select Dates to Cancel</h3>
             <div className='space-y-2 max-h-48 overflow-y-auto'>
-              {bookingDates.map((service: any) => (
+              {bookingDates?.data?.map((service: any) => (
                 <label
                   key={service.id}
                   className={`flex items-center space-x-2 p-2 border rounded-md ${

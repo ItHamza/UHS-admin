@@ -582,7 +582,7 @@ const { data, isPending } = useQuery<{ data: Booking[], pagination: any }>({
                     <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
                       {selectedBooking && (
                         <BookingDetail
-                          booking={selectedBooking}
+                          booking_id={selectedBooking.id}
                           onClose={handleCloseDetail}
                           formatTime={formatTime}
                           formatDate={formatDate}

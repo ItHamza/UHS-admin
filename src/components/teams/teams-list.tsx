@@ -84,6 +84,20 @@ const TeamsList: React.FC = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [teamToUpdate, setTeamToUpdate] = useState<Team | null>(null)
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pagination, setPagination]= useState({
+    current_page: 1,
+    per_page: 10,
+    total: 0,
+    total_pages: 0,
+    has_next_page: false,
+    has_previous_page: false,
+    next_page: null,
+    previous_page: null,
+    showing_from: 0,
+    showing_to: 0,
+  })
 
   // Dropdown state
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -113,7 +127,7 @@ const TeamsList: React.FC = () => {
 
   useEffect(() => {
     fetchTeams()
-  }, [])
+  }, [page, itemsPerPage])
 
   useEffect(() => {
     filterAndSortTeams()
@@ -122,9 +136,10 @@ const TeamsList: React.FC = () => {
   const fetchTeams = () => {
     startTransition(async () => {
       try {
-        const data = await TeamsAction()
-        const normalizedTeams = (data || []).map(normalizeTeamData)
+        const teams = await TeamsAction(page, itemsPerPage, searchTerm)
+        const normalizedTeams = (teams.data || []).map(normalizeTeamData)
         setTeams(normalizedTeams)
+        setPagination(teams.pagination)
       } catch (error) {
         console.error("Failed to fetch teams:", error)
         toast.error("Failed to load teams")
@@ -612,6 +627,76 @@ const TeamsList: React.FC = () => {
             </table>
           </div>
         )}
+        {/* Pagination */}
+        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
+            <div>
+            <p className="text-sm text-gray-500">
+              Showing{" "}
+              <span className="font-medium">{pagination.showing_from}</span> to{" "}
+              <span className="font-medium">{pagination.showing_to}</span> of{" "}
+              <span className="font-medium">{pagination.total}</span> results
+            </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-700 flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {[10, 20, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <span>per page</span>
+              </div>
+              <div className="inline-flex space-x-1">
+
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <label htmlFor="go-to-page" className="text-gray-700">Go to page:</label>
+                <input
+                  id="go-to-page"
+                  type="number"
+                  min={1}
+                  max={pagination.total_pages}
+                  className="w-25 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder={`${page} / ${pagination.total_pages}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const value = Number((e.target as HTMLInputElement).value);
+                      if (value >= 1 && value <= pagination.total_pages) {
+                        setPage(value);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <div className="inline-flex space-x-2">
+                <button
+                  onClick={() => setPage(pagination.previous_page!)}
+                  disabled={!pagination.has_previous_page}
+                  className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage(pagination.next_page!)}
+                  disabled={!pagination.has_next_page}
+                  className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Click outside to close dropdown */}

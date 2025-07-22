@@ -706,8 +706,8 @@ const ScheduleCalendar: React.FC = () => {
 
   const fetchTeams = async () => {
     try {
-      const data: any = await TeamsAction();
-      setTeams(data);
+      const teams: any = await TeamsAction(1, 20, '');
+      setTeams(teams.data);
     } catch (error) {
       console.error("Failed to fetch schedules:", error);
     }

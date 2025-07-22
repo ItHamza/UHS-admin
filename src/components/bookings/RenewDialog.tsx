@@ -194,119 +194,131 @@ const RenewModal: React.FC<RenewModalProps> = ({
             </p>
           </div>
 
-          {/* Services List */}
-          <div className='space-y-4'>
-            {services.map((serviceItem, index) => (
-              <div key={index} className='border rounded-lg p-4 bg-white shadow-sm'>
-                {/* Service Header */}
-                <div className='flex justify-between items-start mb-4'>
-                  <div>
-                    <h4 className='text-lg font-semibold text-gray-900'>
-                      {serviceItem.service.name}
-                    </h4>
-                    {serviceItem.service.description && (
-                      <p className='text-sm text-gray-600 mt-1'>
-                        {serviceItem.service.description}
-                      </p>
-                    )}
-                  </div>
-                  {serviceItem.service.price && (
-                    <div className='text-right'>
-                      <p className='text-lg font-bold text-primary'>
-                        QAR {serviceItem.service.price}
-                      </p>
+          {loading ? (
+            <div className="flex justify-center items-center h-full py-20">
+              <div className="text-center">
+                <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p className="text-gray-600 text-sm">Loading renew details...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Services List */}
+              <div className='space-y-4'>
+                {services.map((serviceItem, index) => (
+                  <div key={index} className='border rounded-lg p-4 bg-white shadow-sm'>
+                    {/* Service Header */}
+                    <div className='flex justify-between items-start mb-4'>
+                      <div>
+                        <h4 className='text-lg font-semibold text-gray-900'>
+                          {serviceItem.service.name}
+                        </h4>
+                        {serviceItem.service.description && (
+                          <p className='text-sm text-gray-600 mt-1'>
+                            {serviceItem.service.description}
+                          </p>
+                        )}
+                      </div>
+                      {serviceItem.service.price && (
+                        <div className='text-right'>
+                          <p className='text-lg font-bold text-primary'>
+                            QAR {serviceItem.service.price}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Service Details Grid */}
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
-                  <div className='flex items-center text-sm'>
-                    <Calendar className='h-4 w-4 mr-2 text-gray-500' />
-                    <div>
-                      <span className='font-medium'>Frequency: </span>
-                      <span className='capitalize'>
-                        {serviceItem.recurrence_plan?.replace("_", " ") || "N/A"}
-                      </span>
-                    </div>
-                  </div>
+                    {/* Service Details Grid */}
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
+                      <div className='flex items-center text-sm'>
+                        <Calendar className='h-4 w-4 mr-2 text-gray-500' />
+                        <div>
+                          <span className='font-medium'>Frequency: </span>
+                          <span className='capitalize'>
+                            {serviceItem.recurrence_plan?.replace("_", " ") || "N/A"}
+                          </span>
+                        </div>
+                      </div>
 
-                  <div className='flex items-center text-sm'>
-                    <MapPin className='h-4 w-4 mr-2 text-gray-500' />
-                    <div>
-                      <span className='font-medium'>Service Period: </span>
-                      <span>
-                        {formatDate(serviceItem.start_date as string)} -{" "}
-                        {formatDate(serviceItem.end_date as string)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Availabilities */}
-                {serviceItem.teamAvailabilities &&
-                  serviceItem.teamAvailabilities.length > 0 && (
-                    <div>
-                      <h5 className='font-medium text-gray-700 mb-3 flex items-center'>
-                        <Clock className='h-4 w-4 mr-2' />
-                        Scheduled Sessions
-                      </h5>
-                      <div className='space-y-3'>
-                        {serviceItem.teamAvailabilities.map((availability) => (
-                          <div
-                            key={availability.id}
-                            className='flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-md'>
-                            <div className='flex items-center'>
-                              <Calendar className='h-4 w-4 mr-2 text-gray-500' />
-                              <span className='font-medium'>
-                                {formatDate(availability.date)}
-                              </span>
-                            </div>
-                            <div className='flex items-center mt-2 sm:mt-0'>
-                              <Clock className='h-4 w-4 mr-2 text-gray-500' />
-                              <span>
-                                {formatTime(availability.start_time)} -{" "}
-                                {formatTime(availability.end_time)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                      <div className='flex items-center text-sm'>
+                        <MapPin className='h-4 w-4 mr-2 text-gray-500' />
+                        <div>
+                          <span className='font-medium'>Service Period: </span>
+                          <span>
+                            {formatDate(serviceItem.start_date as string)} -{" "}
+                            {formatDate(serviceItem.end_date as string)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  )}
+
+                    {/* Team Availabilities */}
+                    {serviceItem.teamAvailabilities &&
+                      serviceItem.teamAvailabilities.length > 0 && (
+                        <div>
+                          <h5 className='font-medium text-gray-700 mb-3 flex items-center'>
+                            <Clock className='h-4 w-4 mr-2' />
+                            Scheduled Sessions
+                          </h5>
+                          <div className='space-y-3'>
+                            {serviceItem.teamAvailabilities.map((availability) => (
+                              <div
+                                key={availability.id}
+                                className='flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-md'>
+                                <div className='flex items-center'>
+                                  <Calendar className='h-4 w-4 mr-2 text-gray-500' />
+                                  <span className='font-medium'>
+                                    {formatDate(availability.date)}
+                                  </span>
+                                </div>
+                                <div className='flex items-center mt-2 sm:mt-0'>
+                                  <Clock className='h-4 w-4 mr-2 text-gray-500' />
+                                  <span>
+                                    {formatTime(availability.start_time)} -{" "}
+                                    {formatTime(availability.end_time)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Total Amount */}
-          <div className='bg-gray-100 p-4 rounded-lg border'>
-            <div className='flex justify-between items-center'>
-              <h4 className='text-lg font-medium'>Total Renewal Amount</h4>
-              <p className='text-xl font-bold text-green-700'>QAR {totalAmount.toFixed(2)}</p>
-            </div>
-          </div>
+              {/* Total Amount */}
+              <div className='bg-gray-100 p-4 rounded-lg border'>
+                <div className='flex justify-between items-center'>
+                  <h4 className='text-lg font-medium'>Total Renewal Amount</h4>
+                  <p className='text-xl font-bold text-green-700'>QAR {totalAmount.toFixed(2)}</p>
+                </div>
+              </div>
 
-          {/* Confirm Button */}
-          <div className='sticky bottom-0 bg-white pt-4 border-t mt-6'>
-            <Button
-              onClick={onConfirmRenew}
-              disabled={isConfirmRenew}
-              className='w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex justify-center items-center'>
-              {isConfirmRenew ? (
-                <>
-                  <Loader2 className='mr-2 h-5 w-5 animate-spin' />
-                  Confirming renew booking...
-                </>
-              ) : (
-                <>
-                  <CreditCard className='mr-2 h-5 w-5 -mt-0.5' />
-                  Confirm Renew Booking (QAR {totalAmount.toFixed(2)})
-                </>
-              )}
-            </Button>
-          </div>
-
-
+              {/* Confirm Button */}
+              <div className='sticky bottom-0 bg-white pt-4 border-t mt-6'>
+                <Button
+                  onClick={onConfirmRenew}
+                  disabled={isConfirmRenew}
+                  className='w-full bg-green-600 hover:bg-green-700 text-white py-3 text-base flex justify-center items-center'>
+                  {isConfirmRenew ? (
+                    <>
+                      <Loader2 className='mr-2 h-5 w-5 animate-spin' />
+                      Confirming renew booking...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className='mr-2 h-5 w-5 -mt-0.5' />
+                      Confirm Renew Booking (QAR {totalAmount.toFixed(2)})
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+            )}
         </div>
       </div>
     </div>

@@ -7,9 +7,9 @@ import {
   updateTeamDetails,
 } from "@/lib/service/teams";
 
-export async function TeamsAction() {
-  const teams = await getTeams();
-  return teams.data;
+export async function TeamsAction(page: number, limit: number, search: string) {
+  const teams = await getTeams(page, limit, search);
+  return teams;
 }
 export async function CreateTeamAction(data: any) {
   const teams = await createTeamDetails(data);

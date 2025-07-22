@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Booking } from "@/types/booking"
 import { Dialog } from "@headlessui/react"
 import {
@@ -11,13 +11,16 @@ import {
   CurrencyDollarIcon,
   PhoneIcon,
   InformationCircleIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline"
 import RescheduleModal from "./RescheduleDialog";
 import RenewModal from "./RenewDialog";
 import CancelModal from "./CancelModal";
-import { Mail } from "lucide-react";
+import { Edit, Mail } from "lucide-react";
+import PaymentModal from "./booking/PaymentModal";
+import { BookingByIdAction } from "@/actions/booking";
 interface BookingDetailProps {
-  booking: Booking
+  booking_id: string;
   onClose: () => void
   formatTime: (time: string) => string
   formatDate: (date: string) => string
@@ -28,7 +31,7 @@ interface BookingDetailProps {
 const DayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 const BookingDetail: React.FC<BookingDetailProps> = ({
-  booking,
+  booking_id,
   onClose,
   formatTime,
   formatDate,
@@ -38,13 +41,54 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
   const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const bookingDays = [
-                        ...new Set(
-                          booking.services.data.map((s: any) =>
-                            DayNames[new Date(s.date).getDay()]
-                          )
-                        ),
-                      ];
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchBooking = async () => {
+      try {
+        setLoading(true);
+        const booking = await BookingByIdAction(booking_id);
+        setBooking(booking);
+      } catch (error) {
+        console.error('Failed to fetch booking:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (booking_id) {
+      fetchBooking();
+    }
+  }, [booking_id]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full py-20">
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-gray-600 text-sm">Loading booking details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="flex justify-center items-center h-full py-20">
+        <p className="text-gray-500">Booking not found or failed to load.</p>
+      </div>
+    );
+  }
+
+  const bookingDays = booking?.teamAvailabilities
+  ? [...new Set(booking.teamAvailabilities?.map((s: any) => DayNames[new Date(s.date).getDay()]))]
+  : [];
+
   return (
     <>
       {/* Header */}
@@ -175,46 +219,63 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
             </div>
           </div>
 
-          {/* Team Information */}
-          {booking.team && (
-            <div className="bg-green-50 rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <UserGroupIcon className="h-5 w-5 mr-2 text-green-500" />
-                Team Information
-              </h3>
-              <div className="mb-4">
-                <p className="text-sm font-medium text-gray-900">{booking.team.name}</p>
-                <p className="text-sm text-gray-600">Team ID: {booking.team.team_number}</p>
-              </div>
-              {booking.team.Users && booking.team.Users.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-900">Team Members</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {booking.team.Users.map((member: any, index: number) => (
-                      <div key={index} className="flex items-center space-x-3 bg-white rounded-lg p-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                            <span className="text-sm font-medium text-green-800">
-                              {member.name.charAt(0).toUpperCase()}
-                            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Team Information */}
+            {booking.team && (
+              <div className="bg-green-50 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                  <UserGroupIcon className="h-5 w-5 mr-2 text-green-500" />
+                  Team Information
+                </h3>
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-900">{booking.team.name}</p>
+                  <p className="text-sm text-gray-600">Team ID: {booking.team.team_number}</p>
+                </div>
+                {booking.team?.Users && booking.team?.Users?.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-gray-900">Team Members</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {booking.team.Users.map((member: any, index: number) => (
+                        <div key={index} className="flex items-center space-x-3 bg-white rounded-lg p-3">
+                          <div className="flex-shrink-0">
+                            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                              <span className="text-sm font-medium text-green-800">
+                                {member.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
+                            {member.phone && (
+                              <div className="flex items-center mt-1">
+                                <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
+                                <p className="text-xs text-gray-600">{member.phone}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{member.name}</p>
-                          {member.phone && (
-                            <div className="flex items-center mt-1">
-                              <PhoneIcon className="h-3 w-3 text-gray-400 mr-1" />
-                              <p className="text-xs text-gray-600">{member.phone}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
+            
+            {/* Payment Information */}
+            <div className="bg-green-50 rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <BanknotesIcon className="h-5 w-5 mr-2 text-green-500" />
+                Payment Information
+                <Edit className="h-4 w-4 ml-auto cursor-pointer" onClick={() => setIsPaymentModalOpen(true)} />
+              </h3>
+              <div className="mb-4">
+                {/* <p className="text-sm font-medium text-gray-900">{booking.payment_status}</p> */}
+                <p className="text-sm text-gray-600">Status: {booking.paymentStatus}</p>
+                <p className="text-sm text-gray-600">Payment ID: {booking.payment?.id}</p>
+              </div>
             </div>
-          )}
+
+          </div>
 
           {/* Service Schedule */}
           <div className="bg-purple-50 rounded-lg p-6">
@@ -222,13 +283,13 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
               <ClockIcon className="h-5 w-5 mr-2 text-purple-500" />
               Service Schedule
             </h3>
-            {Array.isArray(booking?.services.data) && booking.services.data.length > 0 ? (
+            {Array.isArray(booking?.teamAvailabilities) && booking?.teamAvailabilities?.length > 0 ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
-                  {booking.services.data.length} service{booking.services.data.length > 1 ? "s" : ""} scheduled
+                  {booking?.teamAvailabilities.length} service{booking?.teamAvailabilities.length > 1 ? "s" : ""} scheduled
                 </p>
                 <div className="grid grid-cols-1 gap-4">
-                  {booking.services.data.map((service: any, index: number) => (
+                  {booking?.teamAvailabilities.map((service: any, index: number) => (
                     <div
                       key={index}
                       className="bg-white rounded-lg border border-purple-200 p-4 hover:shadow-md transition-shadow"
@@ -295,6 +356,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
             )}
           </div>
 
+
           {/* Special Instructions */}
           {booking.instructions && (
             <div className="bg-amber-50 rounded-lg p-6">
@@ -314,7 +376,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
             <div className="flex flex-col sm:flex-row gap-3">
               {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming") && (
                 <>
-                  {booking.has_renewed ? (
+                  {booking.is_renewed ? (
                     <button
                       disabled
                       className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 cursor-not-allowed"
@@ -346,14 +408,17 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
           </div>
         </div>
       </div>
-      <RenewModal
-        isOpen={isRenewModalOpen}
-        onClose={() => setIsRenewModalOpen(false)}
-        bookingData={booking}
-        onRenew={() => {
-          window.location.reload();
-        }}
-      />
+      {isRenewModalOpen && (
+        <RenewModal
+          isOpen={isRenewModalOpen}
+          onClose={() => setIsRenewModalOpen(false)}
+          bookingData={booking}
+          onRenew={() => {
+            window.location.reload();
+          }}
+        />
+      )}
+      
       {isRescheduleModalOpen && (
         <RescheduleModal
           pkg={booking}
@@ -364,7 +429,14 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         booking={booking}
-      />
+        />
+      {isPaymentModalOpen && (
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          booking={booking}
+          />
+      )}
     </>
   );
 };
