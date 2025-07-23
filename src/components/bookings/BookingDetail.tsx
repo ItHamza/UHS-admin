@@ -374,7 +374,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
             <div className="flex flex-col sm:flex-row gap-3">
-              {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming") && (
+              {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming" || booking.status === 'completed' ) && (
                 <>
                   {booking.is_renewed ? (
                     <button
@@ -390,19 +390,21 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
                       Renew Booking
                     </button>
                   )}
+                </>
+              )}
+              {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "expired" && (
+                <>
                   <button
                     onClick={() => setIsRescheduleModalOpen(true)}
                     className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                     Reschedule
                   </button>
+                  <button
+                    onClick={() => setIsCancelModalOpen(true)}
+                    className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                    Cancel Booking
+                  </button>
                 </>
-              )}
-              {booking.status !== "cancelled" && booking.status !== "completed" && (
-                <button
-                  onClick={() => setIsCancelModalOpen(true)}
-                  className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                  Cancel Booking
-                </button>
               )}
             </div>
           </div>
@@ -435,6 +437,12 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           booking={booking}
+          onStatusChange={(status) => {
+            setBooking((prev) => {
+              if (!prev) return prev; // or return null;
+              return { ...prev, paymentStatus: status };
+            });
+          }}
           />
       )}
     </>

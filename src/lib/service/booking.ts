@@ -28,6 +28,16 @@ export async function renewBooking(id: string, data: any) {
   });
 }
 
+export async function updatePaymentStatus(id: string, data: any) {
+  return apiRequest<any>(`/booking/payment/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
+
 
 export const specialiseBooking = async (data: {
   date: string

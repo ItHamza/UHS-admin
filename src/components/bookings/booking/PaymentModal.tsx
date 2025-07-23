@@ -3,13 +3,14 @@ import { Booking } from "@/types/booking";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
-// import { updatePaymentStatusAction } from "@/actions/booking"; // 👈 adjust if needed
+import { updatePaymentStatusAction } from "@/actions/booking";
 
 const PaymentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   booking: Booking;
-}> = ({ isOpen, onClose, booking }) => {
+  onStatusChange: (status: string) => void;
+}> = ({ isOpen, onClose, booking, onStatusChange }) => {
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -17,12 +18,11 @@ const PaymentModal: React.FC<{
   const handlePayment = (status: string) => async () => {
     try {
       setLoading(true);
-      // await updatePaymentStatusAction({
-      //   bookingId: booking.id,
-      //   status,
-      // });
+      const data = { payment_status: status } 
+      await updatePaymentStatusAction(booking.id, data);
 
       toast.success(`Payment status updated to "${status}"`);
+      onStatusChange(status);
       onClose();
     } catch (error: any) {
       console.error("Payment update failed:", error);

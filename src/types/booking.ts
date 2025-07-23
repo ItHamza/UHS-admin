@@ -4,7 +4,7 @@ export interface Booking {
   customer: string;
   customerType: "residential" | "commercial";
   frequency: string;
-  status: "scheduled" | "active" | "upcoming" | "cancelled" | "completed";
+  status: "scheduled" | "active" | "upcoming" | "cancelled" | "completed" | "expired";
   date: string;
   timeSlot: string;
   duration: number;
