@@ -18,7 +18,7 @@ const PaymentModal: React.FC<{
   const handlePayment = (status: string) => async () => {
     try {
       setLoading(true);
-      const data = { payment_status: status } 
+      const data = { payment_status: status, status: 'scheduled' } 
       await updatePaymentStatusAction(booking.id, data);
 
       toast.success(`Payment status updated to "${status}"`);

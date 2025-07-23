@@ -324,6 +324,18 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
                               )}
                             </p>
                           </div>
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              {service.previous_date && (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-blue-200`}
+                                >
+                                  {service.previous_date}
+                                </span>
+                                
+                              )}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-4 gap-4">
@@ -374,7 +386,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
             <div className="flex flex-col sm:flex-row gap-3">
-              {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming" || booking.status === 'completed' ) && (
+              {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming" || booking.status === 'completed' || booking.status === 'expired' ) && (
                 <>
                   {booking.is_renewed ? (
                     <button

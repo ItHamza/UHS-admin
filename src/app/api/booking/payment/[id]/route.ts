@@ -30,7 +30,7 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const { payment_status } = body;
+    const { payment_status, status } = body;
 
     if (!payment_status) {
       return NextResponse.json(
@@ -39,7 +39,7 @@ export async function PUT(
       );
     }
 
-    const result = await updateBooking(id, { payment_status });
+    const result = await updateBooking(id, { payment_status, status });
 
     return NextResponse.json({
       success: true,
