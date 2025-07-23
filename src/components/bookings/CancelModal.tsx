@@ -28,7 +28,7 @@ const CancelModal: React.FC<{
   const [cancellationReason, setCancellationReason] = useState<string>("");
 
   // Assuming booking has a dates array with ISO date strings
-  const bookingDates = booking.services || [];
+  const bookingDates = booking.teamAvailabilities || [];
 
   const handleInitialSelection = (mode: "partial" | "full") => {
     setCancellationMode(mode);
@@ -109,7 +109,7 @@ const CancelModal: React.FC<{
           <div className='space-y-4'>
             <h3 className='text-lg font-semibold'>Select Dates to Cancel</h3>
             <div className='space-y-2 max-h-48 overflow-y-auto'>
-              {bookingDates?.data?.map((service: any) => (
+              {bookingDates?.map((service: any) => (
                 <label
                   key={service.id}
                   className={`flex items-center space-x-2 p-2 border rounded-md ${
@@ -137,10 +137,9 @@ const CancelModal: React.FC<{
                 Back
               </button>
               <button
-                onClick={() => {
-                  setStep("reason-selection");
-                }}
-                className='w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600'>
+                disabled={cancellationMode === "partial" && !selectedDate}
+                onClick={() => setStep("reason-selection")}
+                className='w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 disabled:opacity-50'>
                 Next
               </button>
             </div>
