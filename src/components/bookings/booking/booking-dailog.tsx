@@ -28,6 +28,7 @@ import { BookingConfirmation } from "./booking-confirmation"
 import { BundleSelection } from "./bundle-selection"
 import { TimeSlotSelection } from "./time-slot-selection"
 import { DeepBookingAction, SpecialisedBookingAction } from "@/actions/booking"
+import { TeamsAction } from "@/actions/team"
 
 interface BookingDialogProps {
   isOpen: boolean
@@ -122,6 +123,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
   const [properties, setProperties] = useState<LocationOption[]>([])
   const [residenceTypes, setResidenceTypes] = useState<any[]>([])
   const [frequencies, setFrequencies] = useState<any[]>([])
+  const [teams, setTeams] = useState<any[]>([])
   const [bundles, setBundles] = useState<Bundle[]>([])
   const [calendar, setCalendar] = useState<Date[]>([])
   const [specializedSubCategories, setSpecializedSubCategories] = useState<any[]>([])
@@ -273,6 +275,19 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
     setFrequencies(response)
   }
 
+    const fetchTeams = async () => {
+    try {
+      setIsLoading(true)
+      const response = await TeamsAction(1, 20, '')
+      setTeams(response.data)
+    } catch (error) {
+      console.error("Error fetching teams:", error)
+      toast.error("Failed to fetch teams")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const fetchSpecializedSubCategories = async (categoryId: string) => {
     try {
       setIsLoading(true)
@@ -344,6 +359,8 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
         duration: payload.duration,
         serviceType: payload.serviceType,
         serviceId: bookingData.subService,
+        teamId: bookingData.teamId,
+        propertyId: bookingData.property
       })
 
       setBundles(response.data || [])
@@ -507,6 +524,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
       }
 
       if (currentStep === 3) {
+        await fetchTeams()
         await fetchFrequencies()
       }
 
@@ -951,6 +969,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
                     bookingData={bookingData}
                     setBookingData={setBookingData}
                     frequencies={frequencies}
+                    teams={teams}
                     calendar={calendar}
                     isLoading={isLoading}
                   />

@@ -32,6 +32,33 @@ async function fetchBundles(body: any) {
   }
 }
 
+async function fetchBundlesByTeam(body: any) {
+  try {
+    const response = await fetch(`${BASE_URL}/bundles/get-bundles-by-team`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const responseText = await response.text(); // Helps debug API response
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch bundles: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = JSON.parse(responseText);
+    return data || [];
+  } catch (error) {
+    console.error("Error fetching bundles:", error);
+    throw error;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Parse the request body
@@ -54,9 +81,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Fetch bundles using the provided body
-    const bundles = await fetchBundles(body);
+    let bundles
+    if (body.teamId === undefined){
+      // Fetch bundles using the provided body
+      bundles = await fetchBundles(body);
+    } else {
+      // Fetch bundles With specific team
+      bundles = await fetchBundlesByTeam(body);
+    }
 
     return NextResponse.json({
       success: true,

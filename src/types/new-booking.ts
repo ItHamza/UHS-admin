@@ -35,6 +35,7 @@ export interface BookingData {
   selectedSpecializedSubCategories: SpecializedSubCategory[]
   selectedSpecializedSubCategoryName: string
   selectedSubServiceName: string
+  teamId?: string
 }
 
 export interface SpecializedSubCategory {

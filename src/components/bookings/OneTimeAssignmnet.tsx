@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useTransition } from "react"
 import { Calendar, Clock, MapPin, User, Phone, Home, CheckCircle, AlertCircle } from "lucide-react"
 import { format, parseISO } from "date-fns"
-import BookingAction from "@/actions/booking"
+import BookingAction, { BookingByIdAction } from "@/actions/booking"
 import { PropBooking } from "@/types/booking";
 import moment from "moment"
 import { AssignTeamSlotAction, OneTimeServiceTeamAvailabilityAction } from "@/actions/team-availability"
@@ -138,9 +138,11 @@ const OneTimeServicesAssignment: React.FC = () => {
     showing_to: 0,
   }
 
-  const fetchTeamAvailability = async (booking: PropBooking) => {
+  const fetchTeamAvailability = async (booking_id: string) => {
     setLoading(true)
     try {
+      const booking: PropBooking = await BookingByIdAction(booking_id)
+
       var duration_value = booking.serviceMinutes
       if (booking.service.name === "Deep Cleaning") {
         const pricingResponse = await PricingAction()
@@ -167,11 +169,9 @@ const OneTimeServicesAssignment: React.FC = () => {
       const data = {
         district_id: booking.district.id,
         start_date: booking.date,
-        duration: duration_value || 1
+        duration: duration_value || 15
       }
-      debugger;
       const response = await OneTimeServiceTeamAvailabilityAction(data)
-      debugger;
       if (response.success){
         setTeamAvailability(response)
       }
@@ -188,7 +188,7 @@ const OneTimeServicesAssignment: React.FC = () => {
   const handleBookingSelect = (booking: PropBooking) => {
     setSelectedSlot(null)
     setSelectedDate(null)
-    fetchTeamAvailability(booking)
+    fetchTeamAvailability(booking.id)
   }
 
   const handleSlotSelect = (team: TeamAvailability, date: string, timeSlot: TimeSlot) => {

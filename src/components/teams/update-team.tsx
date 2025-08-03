@@ -515,7 +515,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                           <div key={userId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                             <div>
                               <span className="font-medium">{user.name}</span>
-                              <span className="text-sm text-gray-500 ml-2">({user.email})</span>
+                              <span className="text-sm text-gray-500 ml-2">({user.phone})</span>
                             </div>
                             <button
                               type="button"
@@ -541,7 +541,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
                         <div key={user.id} className="flex items-center justify-between p-2 border rounded">
                           <div>
                             <span className="font-medium">{user.name}</span>
-                            <span className="text-sm text-gray-500 ml-2">({user.email})</span>
+                            <span className="text-sm text-gray-500 ml-2">({user.phone})</span>
                           </div>
                           <button
                             type="button"

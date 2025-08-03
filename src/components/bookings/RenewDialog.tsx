@@ -124,7 +124,7 @@ const RenewModal: React.FC<RenewModalProps> = ({
       // Use the renewal booking ID or the main booking ID
       const bookingId = bookingData?.renew_booking_id;
 
-      const newData = { status: "pending", payment_status: 'pending', is_renewed: true, prev_booking_id: bookingData.id}
+      const newData = { status: "pending", payment_status: 'pending', has_renewed: true, prev_booking_id: bookingData.id}
       if (!bookingId && !bookingData.id) {
         toast.error("Booking ID not found for renewal");
         return;

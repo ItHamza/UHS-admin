@@ -5,7 +5,7 @@ const BASE_URL =
 
 export async function GET() {
   try {
-    const response = await fetch(`${BASE_URL}/users?role=team_member`, {
+    const response = await fetch(`${BASE_URL}/users?role=team_member&limit=50`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

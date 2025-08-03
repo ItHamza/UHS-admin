@@ -388,7 +388,7 @@ const BookingDetail: React.FC<BookingDetailProps> = ({
             <div className="flex flex-col sm:flex-row gap-3">
               {(booking.status === "active" || booking.status === "scheduled" || booking.status === "upcoming" || booking.status === 'completed' || booking.status === 'expired' ) && (
                 <>
-                  {booking.is_renewed ? (
+                  {booking.has_renewed ? (
                     <button
                       disabled
                       className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 cursor-not-allowed"

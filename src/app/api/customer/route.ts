@@ -66,7 +66,11 @@ export async function GET(request: Request) {
           phone: user.phone,
           email: user.email,
           apartmentNumber: user.apartment_number,
-          residenceType: user.residenceType
+          residenceType: user.residenceType,
+          area: user.area,
+          districtId: user.districtId,
+          propertyId: user.propertyId,
+          residenceTypeId: user.residenceTypeId,
         };
       })
     );

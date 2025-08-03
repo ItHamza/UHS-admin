@@ -10,6 +10,8 @@ export default async function BundlesAction(body: {
   serviceType: string;
   duration: number;
   serviceId: string;
+  propertyId: string;
+  teamId?: string
 }) {
   const bundles = await getBundles(body);
 

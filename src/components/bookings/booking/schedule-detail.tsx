@@ -10,6 +10,7 @@ interface ScheduleDetailsProps {
   bookingData: BookingData
   setBookingData: React.Dispatch<React.SetStateAction<BookingData>>
   frequencies: any[]
+  teams: any[]
   calendar: Date[]
   isLoading: boolean
 }
@@ -20,6 +21,7 @@ export const ScheduleDetails: React.FC<ScheduleDetailsProps> = ({
   bookingData,
   setBookingData,
   frequencies,
+  teams,
   calendar,
   isLoading,
 }) => {
@@ -43,6 +45,14 @@ export const ScheduleDetails: React.FC<ScheduleDetailsProps> = ({
     }))
   }
 
+  const handleTeamChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    setBookingData((prev) => ({
+      ...prev,
+      teamId: value,
+    }))
+  }
+
   if (!isRegularService) {
     return (
       <div className="space-y-5">
@@ -52,7 +62,7 @@ export const ScheduleDetails: React.FC<ScheduleDetailsProps> = ({
           <label className="block font-medium text-gray-700">Select Start Date *</label>
           <CustomDatePicker
             startDate={moment().toDate()}
-            maxDate={moment().add(3, "months").toDate()}
+            maxDate={moment().add(1, "months").toDate()}
             setStartDate={(date: any) => {
               setBookingData((prev) => ({
                 ...prev,
@@ -111,6 +121,25 @@ export const ScheduleDetails: React.FC<ScheduleDetailsProps> = ({
         </div>
       )}
 
+      {/* Team Selection */}
+      <div className="space-y-3">
+        <label className="block font-medium text-gray-700">Select Team *</label>
+        <select
+          name="Team"
+          value={bookingData.teamId}
+          onChange={handleTeamChange}
+          className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition ${noFocusStyle}`}
+          required
+        >
+          <option value="">Select Team</option>
+          {teams.map((team: any) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Start Date Selection */}
       <div className="space-y-3">
         <label className="block font-medium text-gray-700">Select Start Date *</label>
@@ -118,7 +147,7 @@ export const ScheduleDetails: React.FC<ScheduleDetailsProps> = ({
           <CustomDatePicker
             startDate={moment().toDate()}
             maxDate={moment()
-              .add(Number.parseInt(bookingData.duration) || 1, "months")
+              .add( 20, "days")
               .toDate()}
             setStartDate={(date: any) => {
               setBookingData((prev) => ({

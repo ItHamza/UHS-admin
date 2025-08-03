@@ -9,6 +9,8 @@ export const getBundles = async (body: {
   serviceType: string;
   duration: number;
   serviceId: string;
+  propertyId: string;
+  teamId?: string
 }) => {
   return apiRequest<any>("/bundles", {
     method: "POST",
