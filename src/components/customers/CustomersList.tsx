@@ -274,7 +274,7 @@ const CustomersList: React.FC = () => {
                           {customer.name}
                         </div>
                         <div className='text-sm text-gray-500'>
-                          {customer.id}
+                          {customer.user_number}
                         </div>
                       </div>
                     </div>
@@ -337,7 +337,7 @@ const CustomersList: React.FC = () => {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(customer.base_id)}
+                      onClick={() => handleDelete(customer.id)}
                       className='text-red-600 cursor-pointer hover:text-red-900'>
                       Delete
                     </button>

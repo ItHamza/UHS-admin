@@ -17,6 +17,8 @@ interface CustomerSelectionProps {
   query: string
   setQuery: (query: string) => void
   onUserChange: (user: User) => void
+  fetchSearchedUsers: () => Promise<void>
+  loadingUsers: boolean
 }
 
 export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
@@ -30,62 +32,17 @@ export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
   query,
   setQuery,
   onUserChange,
+  fetchSearchedUsers,
+  loadingUsers
 }) => {
 
-  const [apiUsers, setApiUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchUsers = async () => {
-    if (!query.trim()) return;
-    setLoading(true);
-
-    try {
-      const res = await fetch(`/api/customer?search=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      const fetchedUsers: User[] = data.data;
-
-      // Merge with deduplication by stringified id
-      setApiUsers((prev) => {
-        const map = new Map<string, User>();
-
-        [...prev, ...fetchedUsers].forEach((u) => {
-          if (u?.id != null) {
-            map.set(String(u.id), u);
-          }
-        });
-
-        return Array.from(map.values());
-      });
-
-    } catch (err) {
-      console.error("Failed to fetch users:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const mergedUsers = useMemo(() => {
-    const userMap = new Map<string, User>();
-
-    // Newer API users should overwrite local ones if duplicate IDs
-    [...users, ...apiUsers].forEach((u) => {
-      if (u?.id != null) {
-        userMap.set(String(u.id), u); // newer overwrites older
-      }
-    });
-    return Array.from(userMap.values());
-  }, [users, apiUsers]);
-
-
   const filteredUsers = useMemo(() => {
-    if (!query.trim()) return mergedUsers;
+    if (!query.trim()) return users;
 
-    return mergedUsers.filter((u) =>
+    return users.filter((u) =>
       `${u.name} ${u.phone} ${u.email}`.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query, mergedUsers]);
-
+  }, [query, users]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +110,7 @@ export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
           value={selectedUserId}
           onChange={(userId) => {
             setSelectedUserId(userId);
-            const selectedUser = mergedUsers.find((u) => u.id === userId);
+            const selectedUser = users.find((u) => u.id === userId);
             if (selectedUser) {
               setBookingData((prev) => ({
                 ...prev,
@@ -170,11 +127,11 @@ export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                fetchUsers();
+                fetchSearchedUsers();
               }
             }}
             displayValue={(userId) => {
-              const u = mergedUsers.find((u) => u.id === userId);
+              const u = users.find((u) => u.id === userId);
               return u ? `${u.name} - ${u.phone}` : '';
             }}
             className={`w-full p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition`}
@@ -183,7 +140,7 @@ export const CustomerSelection: React.FC<CustomerSelectionProps> = ({
           />
 
           <Combobox.Options className="absolute z-50 mt-1 max-h-60 overflow-auto rounded-md bg-gray-100 py-1 text-base shadow-lg">
-            {loading ? (
+            {loadingUsers ? (
               <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500">
                 <svg className="animate-spin h-4 w-4 text-gray-400" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />

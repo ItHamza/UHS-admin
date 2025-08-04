@@ -56,8 +56,8 @@ export async function GET(request: Request) {
         const address = getAddress(user);
 
         return {
-          base_id: user.id,
-          id: user.user_number,
+          id: user.id,
+          user_number: user.user_number,
           name: user.name,
           status: user.is_active ? "Active" : "Inactive",
           totalBookings,

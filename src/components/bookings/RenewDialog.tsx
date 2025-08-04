@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { BookingByIdAction, ConfirmRenewAction } from "@/actions/booking";
 import { Button } from "@headlessui/react";
+import ConfirmBookingAction from "@/actions/confirmBooking";
 
 interface Bundle {
   id: string;
@@ -122,22 +123,25 @@ const RenewModal: React.FC<RenewModalProps> = ({
     try {
       setIsConfirmRenew(true);
       // Use the renewal booking ID or the main booking ID
-      const bookingId = bookingData?.renew_booking_id;
+      const renew_booking_id = bookingData?.renew_booking_id;
 
-      const newData = { status: "pending", payment_status: 'pending', has_renewed: true, prev_booking_id: bookingData.id}
-      if (!bookingId && !bookingData.id) {
+      // const newData = { status: "pending", payment_status: 'pending', prev_booking_id: bookingData.id}
+      if (!renew_booking_id) {
         toast.error("Booking ID not found for renewal");
         return;
       }
-
-      const response = await ConfirmRenewAction(bookingId, newData);
-      if (response) {
-
-        setIsConfirmRenew(false);
-        onRenew()
-      } else {
-        throw new Error("No payment URL returned");
-      }
+      // const response = await ConfirmRenewAction(bookingId, newData);
+      await ConfirmBookingAction({
+        userPhone: bookingData.user?.phone,
+        specialInstructions: bookingData.special_instructions,
+        appartmentNumber: bookingData.appartment_number,
+        userAvailableInApartment: bookingData.user_available_in_apartment,
+        is_renewed: bookingData ? true : false,
+        prev_booking_id: bookingData.id,
+        bookingId: renew_booking_id,
+      });
+      setIsConfirmRenew(false);
+      onRenew()
     } catch (error: any) {
       console.error("Error renewal booking:", error);
       toast.error(error.message || "Failed to initiate renew booking");

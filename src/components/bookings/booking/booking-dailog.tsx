@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { Check, X } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -129,8 +129,8 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
   const [specializedSubCategories, setSpecializedSubCategories] = useState<any[]>([])
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<any[]>([])
   const [renewalSlots, setRenewalSlots] = useState<any[]>([])
-
-
+  const [apiUsers, setApiUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // UI states
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -164,6 +164,41 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
       setIsLoading(false)
     }
   }
+
+  const fetchSearchedUsers = async () => {
+    if (!query.trim()) return;
+
+    setLoadingUsers(true);
+    try {
+      const res = await fetch(`/api/customer?search=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      const fetchedUsers: User[] = data.data;
+
+      setApiUsers((prev) => {
+        const map = new Map<string, User>();
+        [...prev, ...fetchedUsers].forEach((u) => {
+          if (u?.id != null) {
+            map.set(String(u.id), u);
+          }
+        });
+        return Array.from(map.values());
+      });
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setLoadingUsers(false)
+    }
+  };
+
+  const mergedUsers = useMemo(() => {
+    const userMap = new Map<string, User>();
+    [...users, ...apiUsers].forEach((u) => {
+      if (u?.id != null) {
+        userMap.set(String(u.id), u);
+      }
+    });
+    return Array.from(userMap.values());
+  }, [users, apiUsers]);
 
   const fetchServices = async () => {
     try {
@@ -813,8 +848,8 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
     if (user.residenceTypeId) {
       setBookingData((prev) => ({ ...prev, residenceType: user.residenceTypeId ?? "" }))
     }
-    if (user.apartment_number) {
-      setBookingData((prev) => ({ ...prev, apartmentNumber: user.apartment_number ?? "" }))
+    if (user.apartment_number || user.apartmentNumber) {
+      setBookingData((prev) => ({ ...prev, apartmentNumber: user.apartment_number ?? user.apartmentNumber ?? "" }))
     }
   }
 
@@ -908,7 +943,7 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
               <>
                 {currentStep === 1 && (
                   <CustomerSelection
-                    users={users}
+                    users={mergedUsers}
                     selectedUserId={selectedUserId}
                     setSelectedUserId={setSelectedUserId}
                     bookingData={bookingData}
@@ -918,6 +953,8 @@ export const BookingDialog: React.FC<BookingDialogProps> = ({ isOpen, onClose })
                     query={query}
                     setQuery={setQuery}
                     onUserChange={handleUserChange}
+                    fetchSearchedUsers={fetchSearchedUsers}
+                    loadingUsers={loadingUsers}
                   />
                 )}
 
