@@ -3,7 +3,7 @@ import { Booking } from "@/types/booking";
 import { Clock, X, CreditCard, Calendar, MapPin, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import { BookingByIdAction, ConfirmRenewAction } from "@/actions/booking";
+import { BookingByIdAction, ConfirmRenewAction, updatePaymentStatusAction } from "@/actions/booking";
 import { Button } from "@headlessui/react";
 import ConfirmBookingAction from "@/actions/confirmBooking";
 
@@ -140,6 +140,8 @@ const RenewModal: React.FC<RenewModalProps> = ({
         prev_booking_id: bookingData.id,
         bookingId: renew_booking_id,
       });
+
+      await updatePaymentStatusAction(renew_booking_id, { has_renewed: false });
       setIsConfirmRenew(false);
       onRenew()
     } catch (error: any) {

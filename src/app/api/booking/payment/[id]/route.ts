@@ -30,16 +30,29 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const { payment_status, status } = body;
+    const { payment_status, status, has_renewed } = body;
 
-    if (!payment_status) {
+    const updateData: Record<string, any> = {};
+    if (payment_status !== undefined) {
+      updateData.payment_status = payment_status;
+    }
+
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+
+    if (has_renewed !== undefined) {
+      updateData.has_renewed = has_renewed;
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { success: false, message: "Missing payment status" },
+        { success: false, message: "No valid fields provided for update" },
         { status: 400 }
       );
     }
 
-    const result = await updateBooking(id, { payment_status, status });
+    const result = await updateBooking(id, updateData);
 
     return NextResponse.json({
       success: true,
