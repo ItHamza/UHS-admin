@@ -602,7 +602,7 @@ const getUniqueSchedules = (schedules: Schedule[], dayStr: string) => {
   const daySchedules = schedules.filter((s) => s.date === dayStr);
   const groups: Record<string, Schedule[]> = {};
   daySchedules.forEach((schedule) => {
-    const key = `${schedule.startTime}-${schedule.endTime}`;
+    const key = `${schedule.startTime}-${schedule.endTime}-${schedule.id}`;
     if (!groups[key]) {
       groups[key] = [];
     }
@@ -706,7 +706,7 @@ const ScheduleCalendar: React.FC = () => {
 
   const fetchTeams = async () => {
     try {
-      const teams: any = await TeamsAction(1, 20, '');
+      const teams: any = await TeamsAction(1, 20, "");
       setTeams(teams.data);
     } catch (error) {
       console.error("Failed to fetch schedules:", error);
