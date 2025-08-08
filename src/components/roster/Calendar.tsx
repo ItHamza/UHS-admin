@@ -586,29 +586,32 @@ const formatTimeString = (timeString: string) => {
 };
 
 const timeToHours = (timeString: string) => {
-  const [timePart, meridiem] = timeString.split(" ");
-  let [hours, minutes] = timePart.split(":").map(Number);
+  // Handle different time formats: "8:15", "08:15", "8:15 AM", "08:15:00"
+  let cleanTime = timeString.trim();
 
-  if (meridiem === "PM" && hours !== 12) {
-    hours += 12;
-  } else if (meridiem === "AM" && hours === 12) {
-    hours = 0;
+  // Remove seconds if present (08:15:00 -> 08:15)
+  if (cleanTime.split(":").length === 3) {
+    const parts = cleanTime.split(":");
+    cleanTime = `${parts[0]}:${parts[1]}`;
   }
 
-  return hours;
-};
+  // Check if it has AM/PM
+  if (cleanTime.includes(" ")) {
+    const [timePart, meridiem] = cleanTime.split(" ");
+    let [hours, minutes] = timePart.split(":").map(Number);
 
-const getUniqueSchedules = (schedules: Schedule[], dayStr: string) => {
-  const daySchedules = schedules.filter((s) => s.date === dayStr);
-  const groups: Record<string, Schedule[]> = {};
-  daySchedules.forEach((schedule) => {
-    const key = `${schedule.startTime}-${schedule.endTime}-${schedule.id}`;
-    if (!groups[key]) {
-      groups[key] = [];
+    if (meridiem?.toUpperCase() === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (meridiem?.toUpperCase() === "AM" && hours === 12) {
+      hours = 0;
     }
-    groups[key].push(schedule);
-  });
-  return Object.values(groups);
+
+    return hours;
+  } else {
+    // Assume 24-hour format or just hours
+    const [hours] = cleanTime.split(":").map(Number);
+    return hours;
+  }
 };
 
 const ScheduleGroups: React.FC<{
@@ -616,47 +619,82 @@ const ScheduleGroups: React.FC<{
   hour: number;
   onClick: (schedules: Schedule[], e: React.MouseEvent) => void;
 }> = ({ daySchedules, hour, onClick }) => {
-  const schedulesInHour = daySchedules.filter((group) => {
-    const startHour = timeToHours(group[0].startTime);
-    const endHour = timeToHours(group[0].endTime);
-    return startHour <= hour && endHour > hour;
-  });
+  // Debug: Let's see what times we're working with
+  if (daySchedules.length > 0) {
+    console.log(
+      "Debug - Hour:",
+      hour,
+      "Sample schedule times:",
+      daySchedules[0]?.[0]?.startTime,
+      daySchedules[0]?.[0]?.endTime,
+      "Parsed start hour:",
+      timeToHours(daySchedules[0]?.[0]?.startTime || "")
+    );
+  }
 
-  const schedulesToShow = schedulesInHour.filter((group) => {
-    return timeToHours(group[0].startTime) === hour;
+  // Only show schedules that START in this hour to avoid duplicates
+  const schedulesToShow = daySchedules.filter((group) => {
+    const schedule = group[0];
+    const startHour = timeToHours(schedule.startTime);
+    return startHour === hour;
   });
 
   return (
     <div className='space-y-1'>
       {schedulesToShow.map((group, idx) => (
         <div key={idx} className='space-y-1'>
-          {group.map((schedule, scheduleIdx) => (
-            <div
-              key={`${idx}-${scheduleIdx}`}
-              className={`rounded p-2 text-xs text-white cursor-pointer ${
-                statusColors[schedule.status]
-              }`}
-              style={{
-                height: "auto",
-                gridRowStart: `span ${
-                  timeToHours(schedule.endTime) -
-                  timeToHours(schedule.startTime)
-                }`,
-              }}
-              onClick={(e) => onClick([schedule], e)}>
-              <div className='font-bold'>{schedule.teamName}</div>
-              <div>{schedule.status}</div>
-              <div>
-                {schedule.startTime} - {schedule.endTime}
+          {group.map((schedule, scheduleIdx) => {
+            const startHour = timeToHours(schedule.startTime);
+            const endHour = timeToHours(schedule.endTime);
+            const duration = endHour - startHour;
+
+            return (
+              <div
+                key={`${idx}-${scheduleIdx}`}
+                className={`rounded p-2 text-xs text-white cursor-pointer ${
+                  statusColors[schedule.status]
+                }`}
+                style={{
+                  height: duration > 1 ? `${duration * 60}px` : "auto",
+                  minHeight: "50px",
+                }}
+                onClick={(e) => onClick([schedule], e)}>
+                <div className='font-bold'>{schedule.teamName}</div>
+                <div>{schedule.status}</div>
+                <div>
+                  {schedule.startTime} - {schedule.endTime}
+                </div>
+                <div className='text-xs truncate'>
+                  {schedule.property?.name}
+                </div>
+                <div className='text-xs truncate'>
+                  {schedule.district?.name}
+                </div>
               </div>
-              <div className='text-xs truncate'>{schedule.property?.name} </div>
-              <div className='text-xs truncate'>{schedule.district?.name}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ))}
     </div>
   );
+};
+
+const getUniqueSchedules = (schedules: Schedule[], dayStr: string) => {
+  const daySchedules = schedules.filter((s) => s.date === dayStr);
+  console.log(
+    "Filtering schedules for day:",
+    schedules.length,
+    daySchedules.length
+  );
+  const groups: Record<string, Schedule[]> = {};
+  daySchedules.forEach((schedule) => {
+    const key = `${schedule.startTime}-${schedule.endTime}`;
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(schedule);
+  });
+  return Object.values(groups);
 };
 
 const ShimmerLoading = () => (
