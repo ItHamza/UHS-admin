@@ -16,6 +16,7 @@ import {
   RiMapPinRangeFill,
   RiPrinterFill,
 } from "react-icons/ri";
+import { useNotificationStore } from "@/store/useNotificationStore";
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -24,6 +25,8 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const pathname = usePathname();
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const displayCount = unreadCount > 99 ? "99+" : unreadCount;
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: RiDashboardLine },
@@ -33,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     { name: "Teams", href: "/teams", icon: RiTeamFill },
     { name: "Project Management", href: "/managements", icon: RiMapPinRangeFill },
     { name: "Price Management", href: "/pricing", icon: RiPrinterFill },
-    { name: "Settings", href: "/settings", icon: RiSettings4Line },
+    { name: "Notification", href: "/notifications", icon: RiSettings4Line },
   ];
 
   const isActive = (path: string) => {
@@ -62,6 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <nav className='space-y-1'>
             {navigation.map((item) => {
               const active = isActive(item.href);
+              const isNotifications = item.href === "/notifications";
               return (
                 <Link
                   href={item.href}
@@ -78,7 +82,16 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                         : "text-blue-300 group-hover:text-white"
                     }`}
                   />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+
+                  {isNotifications && unreadCount > 0 && (
+                    <span
+                      className="ml-auto inline-flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-semibold min-w-5 h-5 px-1"
+                      aria-label={`Unread notifications: ${displayCount}`}
+                    >
+                      {displayCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

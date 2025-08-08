@@ -6,6 +6,7 @@ import Providers from "./providers";
 import {
   ClerkProvider
 } from '@clerk/nextjs'
+import SocketBridge from "./socketBridge";
 
 export const metadata: Metadata = {
   title: "Urban Hospitality Services",
@@ -27,6 +28,7 @@ export default function RootLayout({
           />
         </head>
         <body>
+          <SocketBridge />
           <AppLayout>
             <Providers>{children}</Providers>
           </AppLayout>
