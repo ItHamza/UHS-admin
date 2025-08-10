@@ -71,6 +71,10 @@ export async function GET(request: Request) {
           districtId: user.districtId,
           propertyId: user.propertyId,
           residenceTypeId: user.residenceTypeId,
+          building_number: user.building_number,
+          building_name: user.building_name,
+          street_no: user.street_no,
+          zone: user.zone,
         };
       })
     );

@@ -274,7 +274,7 @@ const CustomersList: React.FC = () => {
                           {customer.name}
                         </div>
                         <div className='text-sm text-gray-500'>
-                          {customer.user_number}
+                          {customer.user_number || 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -459,6 +459,7 @@ const CustomersList: React.FC = () => {
           onClose={() => {
             setShowEditUser(!showEditUser);
           }}
+          onSaved={refreshCustomers}
         />
       )}
     </div>

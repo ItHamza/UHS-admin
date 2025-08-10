@@ -443,16 +443,16 @@ export default function NotificationsPage() {
   }
 
   const views = [
-    { id: 'timeline', name: 'Timeline', component: TimelineView },
     { id: 'tabbed', name: 'Tabbed', component: TabbedView },
-    { id: 'compact', name: 'Compact List', component: CompactListView }
+    { id: 'compact', name: 'Compact List', component: CompactListView },
+    { id: 'timeline', name: 'Timeline', component: TimelineView }
   ]
 
   // const CurrentViewComponent = views.find(v => v.id === currentView)?.component || GroupedCardsView
   const CurrentViewComponent: React.FC<{
     notifications: Notification[];
     markAsRead: (id: string) => void;
-  }> = views.find(v => v.id === currentView)?.component || TimelineView;
+  }> = views.find(v => v.id === currentView)?.component || TabbedView;
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
