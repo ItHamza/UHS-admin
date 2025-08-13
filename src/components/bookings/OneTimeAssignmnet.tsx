@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
-import { Calendar, Clock, MapPin, User, Phone, Home, CheckCircle, AlertCircle, Users, Info, Ban, X, Timer } from "lucide-react"
+import { Calendar, Clock, MapPin, User, Phone, Home, CheckCircle, AlertCircle, Users, Info, Ban, X, Timer, Loader2, LoaderCircle, LoaderCircleIcon, SplineIcon, LoaderPinwheel } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { BookingByIdAction } from "@/actions/booking"
 import { PropBooking } from "@/types/booking"
@@ -12,6 +12,7 @@ import toast from "react-hot-toast"
 import PricingAction from "@/actions/pricing"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline"
+import { CancelBookingAction } from "@/actions/cancel-booking"
 
 // Types based on your API response
 interface TimeSlot {
@@ -109,7 +110,20 @@ const bookingIsAssigned = (b?: PropBooking | null) => !!(b?.team?.id || (b as an
 const bookingIsCancelled = (b?: PropBooking | null) =>
   ["cancelled", "canceled", "void", "rejected"].includes(((b as any)?.status ?? (b as any)?.booking_status ?? "").toLowerCase())
 
-const sum = (arr: number[]) => arr.reduce((a, c) => a + c, 0)
+const BookingIsCompleted = (b?: PropBooking | null) =>
+  ["completed", "expired"].includes(((b as any)?.status ?? (b as any)?.booking_status ?? "").toLowerCase())
+
+const badgeTone = (status?: string) => {
+  const s = (status || "").toLowerCase();
+  debugger;
+  if (["pending","processing","unpaid"].some(k => s.includes(k)))
+    return "bg-amber-50 text-amber-700 border-amber-300";
+  if (["paid"].some(k => s.includes(k)))
+    return "bg-green-50 text-green-700 border-green-300";
+  if (["failed","declined","refunded","chargeback"].some(k => s.includes(k)))
+    return "bg-red-50 text-red-700 border-red-300";
+  return "bg-purple-50 text-purple-700 border-purple-300"; // default
+};
 
 // ---- Component ----
 const OneTimeServicesAssignment: React.FC = () => {
@@ -190,9 +204,11 @@ const OneTimeServicesAssignment: React.FC = () => {
       if (booking.service?.name === "Deep Cleaning") {
         const pricingResponse = await PricingAction()
         const service_type = pricingResponse?.find(
-          (p: any) => p.frequency === booking.frequency && p.residenceType?.type === booking.residence_type?.type,
+          (p: any) => p.frequency === booking.frequency &&
+                      p.residenceType?.type === booking.residence_type?.type &&
+                      p.service_id === booking.service_id,
         )
-        duration_value = service_type?.duration_value ?? duration_value ?? 15
+        duration_value = service_type?.duration_value ?? duration_value ?? 120
       } else {
         const subServices = booking.bookingItems
           ?.map((item: any) => {
@@ -234,8 +250,11 @@ const OneTimeServicesAssignment: React.FC = () => {
   }
 
   const handleBookingSelect = (booking: PropBooking) => {
+    setLoading(true);
     setSelectedSlot(null)
     setSelectedDate(null)
+    // Show the currently clicked booking immediately
+    setSelectedBooking(booking);
     fetchTeamAvailability(booking.id)
   }
 
@@ -272,22 +291,11 @@ const OneTimeServicesAssignment: React.FC = () => {
     }
   }
 
-  // ---- Cancellation flow (API wired; form inputs commented in dialog) ----
-  const cancelBooking = async (id: string, reason: string, note?: string) => {
-    const res = await fetch(`/api/booking/${id}/cancel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason, note }),
-    })
-    if (!res.ok) throw new Error("Cancellation failed")
-    return res.json()
-  }
-
   const handleCancel = async () => {
     if (!selectedBooking) return
     try {
       setCancelling(true)
-      await cancelBooking((selectedBooking as any).id, cancelReason, cancelNote)
+      const cancel = await CancelBookingAction((selectedBooking as any).id)
       toast.success("Booking cancelled")
       setShowCancel(false)
       setCancelNote("")
@@ -341,25 +349,6 @@ const OneTimeServicesAssignment: React.FC = () => {
             <h3 className="text-lg font-semibold flex items-center gap-2"><Ban className="w-5 h-5 text-red-600"/> Cancel Booking</h3>
             <button className="p-1 rounded hover:bg-gray-100" onClick={onClose}><X className="w-5 h-5"/></button>
           </div>
-          {/*
-          <div className="space-y-4 text-sm">
-            <div>
-              <label className="block text-gray-700 mb-1">Reason</label>
-              <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="w-full border rounded px-2 py-2">
-                <option>Customer request</option>
-                <option>Duplicate booking</option>
-                <option>Pricing/estimate issue</option>
-                <option>No show</option>
-                <option>Operational constraint</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Note (optional)</label>
-              <textarea value={cancelNote} onChange={(e) => setCancelNote(e.target.value)} rows={3} className="w-full border rounded px-2 py-2" placeholder="Add any context for the team" />
-            </div>
-          </div>
-          */}
           <div className="mt-6 flex justify-end gap-3">
             <button onClick={onClose} className="px-4 py-2 rounded border">Close</button>
             <button onClick={onConfirm} disabled={cancelling} className="px-5 py-2 rounded bg-red-600 text-white disabled:opacity-60">
@@ -444,8 +433,11 @@ const OneTimeServicesAssignment: React.FC = () => {
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-medium text-sm">{(booking as any).booking_number}</span>
                           <div className="flex items-center gap-2">
-                            {isCancelled && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${badgeTone(booking.payment_status)}`}>{booking.payment_status}</span>
+                            {isCancelled ? (
                               <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-300">Cancelled</span>
+                            ) : (
+                              <span className={`text-xs px-2 py-0.5 rounded-full border ${badgeTone(booking.status)}`}>{booking.status}</span>
                             )}
                             <span className="text-xs text-gray-500">{moment((booking as any).date).format("DD MMM YYYY")}</span>
                           </div>
@@ -494,344 +486,350 @@ const OneTimeServicesAssignment: React.FC = () => {
           )}
 
           {/* Right pane */}
-          <div className="lg:col-span-2">
-            {selectedBooking ? (
-              <div className="space-y-6">
-                {/* Booking Details */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Booking Details</h3>
-                    <div className="flex items-center gap-2">
-                      {bookingIsCancelled(selectedBooking) && (
-                        <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-300">Cancelled</span>
-                      )}
-                      {bookingIsAssigned(selectedBooking) && (
-                        <AssignedBadge teamName={getBookingTeamName(selectedBooking)} />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Customer Information</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center">
-                          <User className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{(selectedBooking as any).customer}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{(selectedBooking as any).user?.phone}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Service Details</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center">
-                          <Home className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{(selectedBooking as any).service?.name === "Residential Cleaning" ? "Specialised Cleaning" : (selectedBooking as any).service?.name}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{(selectedBooking as any).serviceMinutes} minutes</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Location</h4>
-                      <div className="text-sm text-gray-600">
-                        <div>
-                          {(selectedBooking as any).appartment_number}, {(selectedBooking as any).residence_type?.type}
-                        </div>
-                        <div>
-                          {(selectedBooking as any).property?.name}, {(selectedBooking as any).district?.name}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Requested Date</h4>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                          <span>{(selectedBooking as any).date}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Assigned team summary (read-only) */}
-                    {bookingIsAssigned(selectedBooking) && (
-                      <div className="md:col-span-2 mt-2">
-                        <h4 className="font-medium text-gray-900 mb-2">Assigned Team</h4>
-                        <div className="text-sm flex flex-wrap items-center gap-3 bg-green-50 border border-green-200 rounded p-3">
-                          <Users className="w-4 h-4 text-green-700" />
-                          <span className="font-medium text-green-900">{getBookingTeamName(selectedBooking) ?? "Team"}</span>
-                          <Calendar className="w-4 h-4 text-green-700" />
-                          <span className="font-medium text-green-900">{getBookingServiceDate(selectedBooking)}</span>
-                          <Timer className="w-4 h-4 text-green-700" />
-                          <span className="font-medium text-green-900">{getBookingServiceTime(selectedBooking)}</span>
-                          <span className="text-green-800/80">(Reassignment disabled)</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {(selectedBooking as any).bookingItems?.length > 0 && (
-                      <div className="md:col-span-2 mt-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Sub-Services</h4>
-                        <div className="space-y-3 text-sm">
-                          {(selectedBooking as any).bookingItems.map((item: any, idx: number) => {
-                            const name = item?.subServiceItem?.name ?? item?.name ?? `Item ${idx + 1}`
-                            const qty = item?.quantity ?? 1
-                            const unitMin = item?.subServiceItem?.time_duration_in_minutes ?? item?.time_duration_in_minutes ?? 0
-                            const totalMin = qty * (unitMin || 0)
-                            return (
-                              <div key={idx} className="border border-gray-200 rounded-md p-3 bg-gray-50">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-800 font-semibold">{name}</span>
-                                  <span className="text-gray-600">
-                                    Qty: <strong>{qty}</strong>{" "} Duration: <strong>{totalMin} min</strong>
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-gray-600 mt-1">
-                                  <span>Category: {item?.subServiceItem?.category ?? "—"}</span>
-                                  <span>Price per unit: <strong>{item?.subServiceItem?.price_per_unit ?? "—"}</strong></span>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cancellation options (button hidden for now) */}
-                    {/*
-                    {!bookingIsCancelled(selectedBooking) && (
-                      <div className="md:col-span-2">
-                        <h4 className="font-medium text-gray-900 mb-2">Cancellation</h4>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <button onClick={() => setShowCancel(true)} className="px-4 py-2 rounded border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 flex items-center gap-2">
-                            <Ban className="w-4 h-4"/> Cancel this booking
-                          </button>
-                          <span className="text-sm text-gray-500">This will notify the team and free the slot if assigned.</span>
-                        </div>
-                      </div>
-                    )}
-                    */}
-                  </div>
-                </div>
-
-                {/* Team Availability (ONLY when unassigned + not cancelled) */}
-                {!bookingIsAssigned(selectedBooking) && !bookingIsCancelled(selectedBooking) && (
-                  loading ? (
-                    <div className="bg-white rounded-lg shadow p-6">
-                      <div className="animate-pulse space-y-4">
-                        <div className="h-4 bg-gray-200 rounded w-1/4" />
-                        <div className="space-y-2">
-                          <div className="h-3 bg-gray-200 rounded" />
-                          <div className="h-3 bg-gray-200 rounded w-5/6" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : teamAvailability ? (
-                    <div className="bg-white rounded-lg shadow">
-                      <div className="p-4 border-b">
-                        <div className="flex justify-between items-center">
-                          <h3 className="text-lg font-semibold">Available Teams & Slots</h3>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => setViewMode("list")}
-                              className={`px-3 py-1 text-sm rounded ${viewMode === "list" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
-                            >
-                              List
-                            </button>
-                            <button
-                              onClick={() => setViewMode("calendar")}
-                              className={`px-3 py-1 text-sm rounded ${viewMode === "calendar" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
-                            >
-                              Calendar
-                            </button>
-                          </div>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600">
-                          {teamAvailability?.data?.summary?.teams_with_availability} teams available •{" "}
-                          {teamAvailability?.data?.teams?.reduce((acc, team) => acc + team.availability_summary.total_timeslots, 0)}{" "}
-                          total slots
-                        </div>
-                      </div>
-
-                      <div className="p-4">
-                        {viewMode === "list" ? (
-                          <div className="space-y-6">
-                            {teamAvailability?.data?.teams?.map((team) => (
-                              <div key={team.team_id} className="border rounded-lg p-4">
-                                <div className="flex justify-between items-start mb-4">
-                                  <div>
-                                    <h4 className="font-semibold text-gray-900">{team.team_name}</h4>
-                                    <div className="text-sm text-gray-600">
-                                      {team.members_count} members • {team.availability_summary.availability_percentage}% available
-                                    </div>
-                                  </div>
-                                  {teamAvailability.data?.summary?.best_team?.team_id === team.team_id && (
-                                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Recommended</span>
-                                  )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {team.daily_availability
-                                    .filter((day) => day.available && day.timeslots.length > 0)
-                                    ?.map((day) => (
-                                      <div key={day.date} className="border rounded p-3">
-                                        <div className="font-medium text-sm mb-2">
-                                          {formatDate(day.date)}
-                                          {(selectedBooking as any).date === day.date && (
-                                            <span className="ml-2 text-xs text-blue-600">(Preferred)</span>
-                                          )}
-                                        </div>
-                                        <div className="space-y-1">
-                                          {day.timeslots?.map((slot, idx) => (
-                                            <button
-                                              key={idx}
-                                              onClick={() => handleSlotSelect(team, day.date, slot)}
-                                              className={`w-full text-left p-2 text-sm rounded border ${
-                                                selectedSlot?.time_slot === slot && selectedSlot?.date === day.date
-                                                  ? "bg-blue-100 border-blue-300"
-                                                  : "hover:bg-gray-50 border-gray-200"
-                                              }`}
-                                            >
-                                              <div className="flex items-center justify-between">
-                                                <span>
-                                                  {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                                </span>
-                                                <Clock className="w-3 h-3 text-gray-400" />
-                                              </div>
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+            <div className="lg:col-span-2 relative">
+              {loading && (
+                <div className="absolute left-0 right-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse" />
+              )}
+              {selectedBooking ? (
+                <div className="space-y-6">
+                  {/* Booking Details */}
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Booking Details</h3>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full border ${badgeTone(selectedBooking.payment_status)}`}>{selectedBooking.payment_status}</span>
+                        {bookingIsCancelled(selectedBooking) ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-300">Cancelled</span>
                         ) : (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-7 gap-2">
-                              {teamAvailability.data.summary.dates_checked?.map((date) => {
-                                const availableSlots = teamAvailability.data.teams.flatMap((team) =>
-                                  team.daily_availability
-                                    .filter((day) => day.date === date && day.available)
-                                    .flatMap((day) => day.timeslots?.map((slot) => ({ team, slot }))),
-                                )
-                                const isPreferred = (selectedBooking as any).date === date
-                                const isSelected = selectedDate === date
+                          <span className={`text-xs px-2 py-0.5 rounded-full border ${badgeTone(selectedBooking.status)}`}>{selectedBooking.status}</span>
+                        )}
+                      </div>
+                    </div>
 
-                                return (
-                                  <button
-                                    key={date}
-                                    onClick={() => setSelectedDate(isSelected ? null : date)}
-                                    className={`p-3 text-center rounded border ${
-                                      availableSlots.length === 0
-                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                        : isSelected
-                                        ? "bg-blue-100 border-blue-300"
-                                        : isPreferred
-                                        ? "bg-green-50 border-green-300 hover:bg-green-100"
-                                        : "hover:bg-gray-50 border-gray-200"
-                                    }`}
-                                    disabled={availableSlots.length === 0}
-                                  >
-                                    <div className="text-xs font-medium">{format(parseISO(date), "EEE")}</div>
-                                    <div className="text-sm">{format(parseISO(date), "d")}</div>
-                                    <div className="text-xs text-gray-500">{availableSlots.length} slots</div>
-                                    {isPreferred && <div className="text-xs text-green-600 font-medium">Preferred</div>}
-                                  </button>
-                                )
-                              })}
-                            </div>
-
-                            {selectedDate && (
-                              <div className="border-t pt-4">
-                                <h4 className="font-medium mb-3">Available slots for {formatDate(selectedDate)}</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {teamAvailability.data.teams
-                                    .flatMap((team) =>
-                                      team.daily_availability
-                                        .filter((d) => d.date === selectedDate && d.available)
-                                        .flatMap((d) => d.timeslots.map((slot) => ({ team, slot }))),
-                                    )
-                                    .map(({ team, slot }, idx) => (
-                                      <button
-                                        key={idx}
-                                        onClick={() => handleSlotSelect(team, selectedDate, slot)}
-                                        className={`p-3 text-left rounded border ${
-                                          selectedSlot?.time_slot === slot && selectedSlot?.date === selectedDate
-                                            ? "bg-blue-100 border-blue-300"
-                                            : "hover:bg-gray-50 border-gray-200"
-                                        }`}
-                                      >
-                                        <div className="font-medium text-sm">{team.team_name}</div>
-                                        <div className="text-sm text-gray-600">
-                                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                                        </div>
-                                      </button>
-                                    ))}
-                                </div>
-                              </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Customer Information</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{(selectedBooking as any).customer}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{(selectedBooking as any).user?.phone}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Service Details</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center">
+                            <Home className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{(selectedBooking as any).service?.name === "Residential Cleaning" ? "Specialised Cleaning" : (selectedBooking as any).service?.name}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                            { loading ? (
+                              <Loader2/>
+                            ) : (
+                              <span>{(selectedBooking as any).serviceMinutes} minutes</span>
                             )}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Location</h4>
+                        <div className="text-sm text-gray-600">
+                          <div>
+                            {(selectedBooking as any).appartment_number}, {(selectedBooking as any).residence_type?.type}
+                          </div>
+                          <div>
+                            {(selectedBooking as any).property?.name}, {(selectedBooking as any).district?.name}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Requested Date</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{(selectedBooking as any).date}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Assigned team summary (read-only) */}
+                      {bookingIsAssigned(selectedBooking) && (
+                        <div className="md:col-span-2 mt-2">
+                          <h4 className="font-medium text-gray-900 mb-2">Assigned Team</h4>
+                          <div className="text-sm flex flex-wrap items-center gap-3 bg-green-50 border border-green-200 rounded p-3">
+                            <Users className="w-4 h-4 text-green-700" />
+                            <span className="font-medium text-green-900">{getBookingTeamName(selectedBooking) ?? "Team"}</span>
+                            <Calendar className="w-4 h-4 text-green-700" />
+                            <span className="font-medium text-green-900">{getBookingServiceDate(selectedBooking)}</span>
+                            <Timer className="w-4 h-4 text-green-700" />
+                            <span className="font-medium text-green-900">{getBookingServiceTime(selectedBooking)}</span>
+                            <span className="text-green-800/80">(Reassignment disabled)</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {(selectedBooking as any).bookingItems?.length > 0 && (
+                        <div className="md:col-span-2 mt-4">
+                          <h4 className="font-medium text-gray-900 mb-2">Sub-Services</h4>
+                          <div className="space-y-3 text-sm">
+                            {(selectedBooking as any).bookingItems.map((item: any, idx: number) => {
+                              const name = item?.subServiceItem?.name ?? item?.name ?? `Item ${idx + 1}`
+                              const qty = item?.quantity ?? 1
+                              const unitMin = item?.subServiceItem?.time_duration_in_minutes ?? item?.time_duration_in_minutes ?? 0
+                              const totalMin = qty * (unitMin || 0)
+                              return (
+                                <div key={idx} className="border border-gray-200 rounded-md p-3 bg-gray-50">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-800 font-semibold">{name}</span>
+                                    <span className="text-gray-600">
+                                      Qty: <strong>{qty}</strong>{" "} Duration: <strong>{totalMin} min</strong>
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-gray-600 mt-1">
+                                    <span>Category: {item?.subServiceItem?.category ?? "—"}</span>
+                                    <span>Price per unit: <strong>{item?.subServiceItem?.price_per_unit ?? "—"}</strong></span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cancellation options (button hidden for now) */}
+                      
+                      {(!bookingIsCancelled(selectedBooking) && !BookingIsCompleted(selectedBooking)) &&  (
+                        <div className="md:col-span-2">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button onClick={() => setShowCancel(true)} className="px-4 py-2 rounded border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 flex items-center gap-2">
+                              <Ban className="w-4 h-4"/> Cancel this booking
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    
+                    </div>
+                  </div>
+
+                  {/* Team Availability (ONLY when unassigned + not cancelled) */}
+                  {!bookingIsAssigned(selectedBooking) && !bookingIsCancelled(selectedBooking) && (
+                    loading ? (
+                      <div className="bg-white rounded-lg shadow p-6">
+                        <div className="animate-pulse space-y-4">
+                          <div className="h-4 bg-gray-200 rounded w-1/4" />
+                          <div className="space-y-2">
+                            <div className="h-3 bg-gray-200 rounded" />
+                            <div className="h-3 bg-gray-200 rounded w-5/6" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : teamAvailability ? (
+                      <div className="bg-white rounded-lg shadow">
+                        <div className="p-4 border-b">
+                          <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-semibold">Available Teams & Slots</h3>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => setViewMode("list")}
+                                className={`px-3 py-1 text-sm rounded ${viewMode === "list" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
+                              >
+                                List
+                              </button>
+                              <button
+                                onClick={() => setViewMode("calendar")}
+                                className={`px-3 py-1 text-sm rounded ${viewMode === "calendar" ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"}`}
+                              >
+                                Calendar
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-sm text-gray-600">
+                            {teamAvailability?.data?.summary?.teams_with_availability} teams available •{" "}
+                            {teamAvailability?.data?.teams?.reduce((acc, team) => acc + team.availability_summary.total_timeslots, 0)}{" "}
+                            total slots
+                          </div>
+                        </div>
+
+                        <div className="p-4">
+                          {viewMode === "list" ? (
+                            <div className="space-y-6">
+                              {teamAvailability?.data?.teams?.map((team) => (
+                                <div key={team.team_id} className="border rounded-lg p-4">
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                      <h4 className="font-semibold text-gray-900">{team.team_name}</h4>
+                                      <div className="text-sm text-gray-600">
+                                        {team.members_count} members • {team.availability_summary.availability_percentage}% available
+                                      </div>
+                                    </div>
+                                    {teamAvailability.data?.summary?.best_team?.team_id === team.team_id && (
+                                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Recommended</span>
+                                    )}
+                                  </div>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {team.daily_availability
+                                      .filter((day) => day.available && day.timeslots.length > 0)
+                                      ?.map((day) => (
+                                        <div key={day.date} className="border rounded p-3">
+                                          <div className="font-medium text-sm mb-2">
+                                            {formatDate(day.date)}
+                                            {(selectedBooking as any).date === day.date && (
+                                              <span className="ml-2 text-xs text-blue-600">(Preferred)</span>
+                                            )}
+                                          </div>
+                                          <div className="space-y-1">
+                                            {day.timeslots?.map((slot, idx) => (
+                                              <button
+                                                key={idx}
+                                                onClick={() => handleSlotSelect(team, day.date, slot)}
+                                                className={`w-full text-left p-2 text-sm rounded border ${
+                                                  selectedSlot?.time_slot === slot && selectedSlot?.date === day.date
+                                                    ? "bg-blue-100 border-blue-300"
+                                                    : "hover:bg-gray-50 border-gray-200"
+                                                }`}
+                                              >
+                                                <div className="flex items-center justify-between">
+                                                  <span>
+                                                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                                  </span>
+                                                  <Clock className="w-3 h-3 text-gray-400" />
+                                                </div>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-7 gap-2">
+                                {teamAvailability.data.summary.dates_checked?.map((date) => {
+                                  const availableSlots = teamAvailability.data.teams.flatMap((team) =>
+                                    team.daily_availability
+                                      .filter((day) => day.date === date && day.available)
+                                      .flatMap((day) => day.timeslots?.map((slot) => ({ team, slot }))),
+                                  )
+                                  const isPreferred = (selectedBooking as any).date === date
+                                  const isSelected = selectedDate === date
+
+                                  return (
+                                    <button
+                                      key={date}
+                                      onClick={() => setSelectedDate(isSelected ? null : date)}
+                                      className={`p-3 text-center rounded border ${
+                                        availableSlots.length === 0
+                                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                          : isSelected
+                                          ? "bg-blue-100 border-blue-300"
+                                          : isPreferred
+                                          ? "bg-green-50 border-green-300 hover:bg-green-100"
+                                          : "hover:bg-gray-50 border-gray-200"
+                                      }`}
+                                      disabled={availableSlots.length === 0}
+                                    >
+                                      <div className="text-xs font-medium">{format(parseISO(date), "EEE")}</div>
+                                      <div className="text-sm">{format(parseISO(date), "d")}</div>
+                                      <div className="text-xs text-gray-500">{availableSlots.length} slots</div>
+                                      {isPreferred && <div className="text-xs text-green-600 font-medium">Preferred</div>}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+
+                              {selectedDate && (
+                                <div className="border-t pt-4">
+                                  <h4 className="font-medium mb-3">Available slots for {formatDate(selectedDate)}</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {teamAvailability.data.teams
+                                      .flatMap((team) =>
+                                        team.daily_availability
+                                          .filter((d) => d.date === selectedDate && d.available)
+                                          .flatMap((d) => d.timeslots.map((slot) => ({ team, slot }))),
+                                      )
+                                      .map(({ team, slot }, idx) => (
+                                        <button
+                                          key={idx}
+                                          onClick={() => handleSlotSelect(team, selectedDate, slot)}
+                                          className={`p-3 text-left rounded border ${
+                                            selectedSlot?.time_slot === slot && selectedSlot?.date === selectedDate
+                                              ? "bg-blue-100 border-blue-300"
+                                              : "hover:bg-gray-50 border-gray-200"
+                                          }`}
+                                        >
+                                          <div className="font-medium text-sm">{team.team_name}</div>
+                                          <div className="text-sm text-gray-600">
+                                            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                                          </div>
+                                        </button>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Assignment Confirmation */}
+                        {selectedSlot && (
+                          <div className="border-t p-4">
+                            <h3 className="text-base font-semibold mb-3 flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                              Assignment Summary
+                            </h3>
+                            <div className="bg-gray-50 rounded p-4 mb-4 text-sm grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <span className="text-gray-500">Team:</span>
+                                <div className="font-medium">{selectedSlot.team_name}</div>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Date:</span>
+                                <div className="font-medium">{formatDate(selectedSlot.date)}</div>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Time:</span>
+                                <div className="font-medium">{formatTime(selectedSlot.time_slot.start_time)} - {formatTime(selectedSlot.time_slot.end_time)}</div>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-3">
+                              <button onClick={() => setSelectedSlot(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">
+                                Cancel
+                              </button>
+                              <button onClick={handleAssignment} disabled={assigning} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                                {assigning ? "Assigning..." : "Confirm Assignment"}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {/* Assignment Confirmation */}
-                      {selectedSlot && (
-                        <div className="border-t p-4">
-                          <h3 className="text-base font-semibold mb-3 flex items-center">
-                            <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                            Assignment Summary
-                          </h3>
-                          <div className="bg-gray-50 rounded p-4 mb-4 text-sm grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <span className="text-gray-500">Team:</span>
-                              <div className="font-medium">{selectedSlot.team_name}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Date:</span>
-                              <div className="font-medium">{formatDate(selectedSlot.date)}</div>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Time:</span>
-                              <div className="font-medium">{formatTime(selectedSlot.time_slot.start_time)} - {formatTime(selectedSlot.time_slot.end_time)}</div>
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-3">
-                            <button onClick={() => setSelectedSlot(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">
-                              Cancel
-                            </button>
-                            <button onClick={handleAssignment} disabled={assigning} className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
-                              {assigning ? "Assigning..." : "Confirm Assignment"}
-                            </button>
-                          </div>
+                    ) : (
+                      <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex items-center text-sm text-gray-600 gap-2">
+                          <Info className="w-4 h-4" />
+                          <span>No availability returned yet. Pick a booking from the left.</span>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-white rounded-lg shadow p-6">
-                      <div className="flex items-center text-sm text-gray-600 gap-2">
-                        <Info className="w-4 h-4" />
-                        <span>No availability returned yet. Pick a booking from the left.</span>
                       </div>
-                    </div>
-                  )
-                )}
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Booking</h3>
-                <p className="text-gray-600">Choose a booking from the list to view details</p>
-              </div>
-            )}
-          </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow p-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Booking</h3>
+                  <p className="text-gray-600">Choose a booking from the list to view details</p>
+                </div>
+              )}
+            </div>
+            
         </div>
       </div>
 
