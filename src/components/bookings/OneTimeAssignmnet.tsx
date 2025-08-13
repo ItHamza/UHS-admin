@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useEffect, useMemo, useState } from "react"
-import { Calendar, Clock, MapPin, User, Phone, Home, CheckCircle, AlertCircle, Users, Info, Ban, X, Timer, Loader2, LoaderCircle, LoaderCircleIcon, SplineIcon, LoaderPinwheel } from "lucide-react"
+import { Calendar, Clock, MapPin, User, Phone, Home, CheckCircle, AlertCircle, Users, Info, Ban, X, Timer, Loader2, CreditCard } from "lucide-react"
 import { format, parseISO } from "date-fns"
 import { BookingByIdAction } from "@/actions/booking"
 import { PropBooking } from "@/types/booking"
@@ -13,6 +13,7 @@ import PricingAction from "@/actions/pricing"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline"
 import { CancelBookingAction } from "@/actions/cancel-booking"
+import PaymentModal from "./booking/PaymentModal"
 
 // Types based on your API response
 interface TimeSlot {
@@ -20,6 +21,7 @@ interface TimeSlot {
   end_time: string
   duration_minutes: number
   schedule_id: string
+  originalScheduleIds: string[]
 }
 
 interface DailyAvailability {
@@ -115,7 +117,6 @@ const BookingIsCompleted = (b?: PropBooking | null) =>
 
 const badgeTone = (status?: string) => {
   const s = (status || "").toLowerCase();
-  debugger;
   if (["pending","processing","unpaid"].some(k => s.includes(k)))
     return "bg-amber-50 text-amber-700 border-amber-300";
   if (["paid"].some(k => s.includes(k)))
@@ -147,6 +148,7 @@ const OneTimeServicesAssignment: React.FC = () => {
   const [cancelReason, setCancelReason] = useState("Customer request")
   const [cancelNote, setCancelNote] = useState("")
   const [cancelling, setCancelling] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   // Debounce the visible search input -> query param
   useEffect(() => {
@@ -273,6 +275,7 @@ const OneTimeServicesAssignment: React.FC = () => {
         date: selectedSlot.date,
         start_time: selectedSlot.time_slot.start_time,
         end_time: selectedSlot.time_slot.end_time,
+        originalScheduleIds: selectedSlot.time_slot.originalScheduleIds
       }
       const assignTeamSlot = await AssignTeamSlotAction(assignmentData)
       if (assignTeamSlot?.success) {
@@ -503,6 +506,16 @@ const OneTimeServicesAssignment: React.FC = () => {
                         ) : (
                           <span className={`text-xs px-2 py-0.5 rounded-full border ${badgeTone(selectedBooking.status)}`}>{selectedBooking.status}</span>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="px-3 py-1.5 text-xs rounded-full border border-blue-300 bg-blue-50 text-blue-700 hover:bg-purple-100 inline-flex items-center gap-1 disabled:opacity-50"
+                          disabled={loading || assigning || cancelling}
+                          title="Update payment status"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Update payment
+                        </button>
                       </div>
                     </div>
 
@@ -903,6 +916,23 @@ const OneTimeServicesAssignment: React.FC = () => {
 
       {/* Cancel dialog */}
       <CancelDialog open={showCancel} onClose={() => setShowCancel(false)} onConfirm={handleCancel} />
+      {isPaymentModalOpen && selectedBooking && (
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          booking={selectedBooking}
+          onStatusChange={async (status) => {
+            setSelectedBooking(prev => (prev ? { ...prev, payment_status: status } as any : prev));
+
+            // keep the left list in sync
+            await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+
+            toast.success(`Payment marked ${status}`);
+            setIsPaymentModalOpen(false);
+          }}
+        />
+      )}
+
     </>
   )
 }

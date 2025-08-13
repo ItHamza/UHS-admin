@@ -14,9 +14,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       end_time,
       date,
       team_id,
+      originalScheduleIds,
     } = data
 
-    if (!id || !schedule_id || !start_time || !end_time || !date || !team_id) {
+    if (!id || !schedule_id || !start_time || !end_time || !date || !team_id || !originalScheduleIds) {
       return NextResponse.json(
         {
           success: false,
@@ -31,6 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       end_time,
       date,
       team_id,
+      originalScheduleIds
     };
     const assignRes = await fetch(`${BASE_URL}/bookings/assign-team/${id}`, {
       method: "PUT",
