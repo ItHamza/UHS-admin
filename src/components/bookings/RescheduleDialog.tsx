@@ -494,7 +494,7 @@ const ReschedulePackageModal: React.FC<{
         ? parseISO(teamAvailabilities[teamAvailabilities.length - 1].date)
         : new Date(pkg.endDate);
 
-    let maxSelectableDate = addDays(lastServiceDate, -1);
+    let maxSelectableDate = addDays(selectedServiceDate, 6);
 
     // Extend the availability by 7 days if the selected date is the last service date
     if (isSameDay(selectedServiceDate, lastServiceDate)) {
@@ -541,8 +541,7 @@ const ReschedulePackageModal: React.FC<{
             {availableDatesStr}
           </p>
           <p className='mt-1 text-xs'>
-            Note: Dates with scheduled services and the day immediately after
-            each service are unavailable.
+            Note: Dates with scheduled services are unavailable.
           </p>
         </div>
 
