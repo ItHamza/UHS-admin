@@ -1,5 +1,5 @@
 import Loader from "@/components/ui/loader";
-import { Booking } from "@/types/booking";
+import { Booking, PropBooking } from "@/types/booking";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -8,7 +8,7 @@ import { updatePaymentStatusAction } from "@/actions/booking";
 const PaymentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  booking: Booking;
+  booking: Booking | PropBooking;
   onStatusChange: (status: string) => void;
 }> = ({ isOpen, onClose, booking, onStatusChange }) => {
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ const PaymentModal: React.FC<{
             <Loader />
             <p className="text-center text-sm text-gray-500 mt-3">Updating payment status...</p>
           </div>
-        ) : booking.paymentStatus === "paid" ? (
+        ) : (booking.paymentStatus === "paid" || booking.payment_status === "paid") ? (
           <div className='space-y-4'>
             <p className='text-gray-600 text-center'>
               This booking is marked as <strong>Paid</strong>.<br />

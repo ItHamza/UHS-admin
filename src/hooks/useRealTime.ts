@@ -3,60 +3,51 @@
 import { useEffect, useRef } from "react";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import toast from "react-hot-toast";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com";
+const PROD_URL = process.env.NEXT_PUBLIC_SOCKET_URL; // e.g. https://backend.urbanservices-qa.com
+const LOCAL_URL = "https://backend.urbanservices-qa.com";
 
-
-const isHttpsProd = () =>
-  typeof window !== "undefined" &&
-  window.location.protocol === "https:" &&
-  !window.location.hostname.includes("localhost");
+function pickSocketUrl() {
+  if (typeof window === "undefined") return "";
+  const isLocalhost = window.location.hostname === "localhost";
+  return isLocalhost ? LOCAL_URL : (PROD_URL || "");
+}
 
 export function useRealtime() {
   const add = useNotificationStore(s => s.addNotification);
-  const lastSeenRef = useRef<string | null>(null); // store latest createdAt
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // In prod HTTPS without a secure socket URL → fallback to polling
-    if (isHttpsProd()) {
-      const tick = async () => {
-        try {
-          const res = await fetch("/api/notification", { cache: "no-store" });
-          const json = await res.json();
-          const list = json?.data?.data ?? json?.data ?? []; // depending on your shape
-          // find items newer than lastSeen and toast them
-          const unread = list.filter((n: any) => n.read === false);
-          const sorted = unread.sort((a: any, b: any) => (a.createdAt < b.createdAt ? 1 : -1));
-          for (const n of sorted) {
-            debugger;
-            if (!lastSeenRef.current || new Date(n.createdAt) > new Date(lastSeenRef.current)) {
-              add(n);
-              toast.success(n.title ?? "New notification", { duration: 5000 });
-            } else {
-              break; // list is sorted, older after this
-            }
-          }
-          if (sorted[0]?.createdAt) lastSeenRef.current = sorted[0].createdAt;
-        } catch (e) {
-          // silent retry
-        }
-      };
-      tick();
-      const id = setInterval(tick, 5000); // 5s polling
-      return () => clearInterval(id);
+    const url = pickSocketUrl();
+    if (!url) {
+      console.error("Socket URL missing. Set NEXT_PUBLIC_SOCKET_URL for prod.");
+      return;
     }
 
-    // Otherwise, use real socket (local or when you set HTTPS socket URL)
-    const url = SOCKET_URL || "http://localhost:3001";
-    const s = io(url, { transports: ["websocket", "polling"] });
+    const s = io(url, {
+      transports: ["websocket", "polling"], // keep polling as a fallback transport inside WS flow
+      withCredentials: false,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+    socketRef.current = s;
+
+    s.on("connect", () => console.log("✅ socket connected", s.id));
+    s.on("connect_error", (err) => console.error("❌ connect_error:", err.message));
+    s.on("error", (err) => console.error("❌ socket error:", err));
+    s.on("disconnect", (reason) => console.log("ℹ️ socket disconnected:", reason));
 
     s.on("new_notification", (data) => {
       add(data);
-      toast.success(data?.title || "New notification", { duration: Infinity });
-      if (data?.createdAt) lastSeenRef.current = data.createdAt;
+      toast.success(data?.title || "New notification", { duration: 5000 });
     });
 
-    return () => s.close();
+    return () => {
+      s.close();
+      socketRef.current = null;
+    };
   }, [add]);
 }
