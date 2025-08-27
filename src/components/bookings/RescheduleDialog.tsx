@@ -203,7 +203,11 @@ const ReschedulePackageModal: React.FC<{
         const response = await RescheduleTimeslotsAction(
           selectedAvailability.team.id,
           format(date, "yyyy-MM-dd"),
-          pkg.serviceMinutes || duration_value || 60
+          pkg.serviceMinutes || duration_value || 60,
+          pkg.property_id,
+          pkg.residence_type_id,
+          pkg.apartment_number,
+          true
         );
 
         // Transform the response into time slots format

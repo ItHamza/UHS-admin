@@ -185,7 +185,19 @@ function TimelineView({ notifications, markAsRead }: CurrentViewComponentProps) 
                         <Badge variant="outline">
                           {key.replace('_', ' ')}
                         </Badge>
-                        <span className="text-gray-900">{value}</span>
+                        <span className="text-gray-900">
+                          {typeof value === 'object' && value !== null ? (
+                              <ul className="space-y-1">
+                                {Object.entries(value).map(([subKey, subValue]) => (
+                                  <li key={subKey}>
+                                    <span className="font-semibold">{subKey}:</span> {String(subValue)}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              value
+                            )}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -295,7 +307,19 @@ function TabbedView({ notifications, markAsRead }: CurrentViewComponentProps) {
                             <div className="font-medium text-xs text-gray-500 uppercase tracking-wide">
                               {key.replace('_', ' ')}
                             </div>
-                            <div className="font-medium text-gray-900">{value}</div>
+                            <div className="font-medium text-gray-900">
+                              {typeof value === 'object' && value !== null ? (
+                                <ul className="space-y-1">
+                                  {Object.entries(value).map(([subKey, subValue]) => (
+                                    <li key={subKey}>
+                                      <span className="font-semibold">{subKey}:</span> {String(subValue)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                value
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -379,7 +403,19 @@ function CompactListView({ notifications, markAsRead }: CurrentViewComponentProp
                         <div className="text-gray-500 capitalize">
                           {key.replace('_', ' ')}
                         </div>
-                        <div className="font-medium text-gray-900">{value}</div>
+                        <div className="font-medium text-gray-900">
+                          {typeof value === 'object' && value !== null ? (
+                              <ul className="space-y-1">
+                                {Object.entries(value).map(([subKey, subValue]) => (
+                                  <li key={subKey}>
+                                    <span className="font-semibold">{subKey}:</span> {String(subValue)}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              value
+                            )}
+                        </div>
                       </div>
                     ))}
                   </div>
