@@ -72,18 +72,6 @@ export async function GET(req: NextRequest) {
     const teamAvailabilitySchedules = await Promise.all(
       teamAvailability.map(async (schedule: any) => {
         let booking = null;
-        try {
-          const bookingData = await fetch(
-            `${BASE_URL}/bookings/bookings?team_availability_ids=${schedule.id}`
-          );
-          const bookingRes = await bookingData.json();
-          booking = bookingRes.data.length > 0 ? bookingRes.data[0] : null;
-        } catch (error) {
-          console.error(
-            `Error fetching booking for schedule ${schedule.id}:`,
-            error
-          );
-        }
 
         return {
           id: schedule.id,
@@ -109,13 +97,13 @@ export async function GET(req: NextRequest) {
           is_blocked: schedule.is_blocked,
           is_available: schedule?.is_available || false,
           team_id: schedule.team_id,
-          apartment_number: schedule.apartment_number,
+          apartment_number: schedule.Bookings[0].appartment_number || schedule.apartment_number,
           area: schedule.Area,
           district: schedule.District,
           property: schedule.Property,
           residence_type: schedule.ResidenceType,
-          user: booking?.user || null,
-          booking_id: booking?.id || null,
+          user: schedule.Bookings[0]?.user || null,
+          booking_number: schedule.Bookings[0].booking_number || null,
         };
       })
     );

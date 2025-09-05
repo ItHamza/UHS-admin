@@ -27,6 +27,7 @@ interface ScheduleData {
   is_available: boolean
   team_id: string
   apartment_number: string | null
+  booking_number?: string | null
   residence_type: { id: string; type: string } | null
   property: { id: string; name: string } | null
   district: { id: string; name: string } | null
@@ -51,6 +52,8 @@ interface ProcessedBooking {
   members: any[]
   user: any
   rating: number
+  bookingNumber?: string | null
+  customerCode?: string | null
 }
 
 const SERVICE_COLORS = {
@@ -138,6 +141,8 @@ export default function RosterList() {
         members: schedule.members || [],
         user: schedule.user,
         rating: schedule.rating || 0,
+        bookingNumber: schedule.booking_number || null,
+        customerCode: schedule.user?.user_number || null,
       }),
     )
   }, [scheduleData])
@@ -347,6 +352,9 @@ export default function RosterList() {
                         Team
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer Code
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Time
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -382,6 +390,9 @@ export default function RosterList() {
                             <UsersIcon className="h-4 w-4 text-gray-400 mr-2" />
                             <span className="text-sm font-medium text-gray-900">{booking.team_no}</span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{booking.customerCode || "N/A"}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -449,6 +460,11 @@ export default function RosterList() {
                       >
                         {booking.service}
                       </span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-gray-600">
+                      {/* <span className="mr-4">Booking: {booking.bookingNumber || "N/A"}</span> */}
+                      <span>Customer: {booking.customerCode || "N/A"}</span>
                     </div>
 
                     <div className="flex items-center">

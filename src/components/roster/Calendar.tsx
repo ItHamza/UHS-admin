@@ -13,6 +13,7 @@ import {
   Star,
   User,
   Phone,
+  Book,
 } from "lucide-react";
 import {
   format,
@@ -57,6 +58,7 @@ interface ScheduleData {
   area: { id: string; name: string } | null;
   members: any[];
   user: any;
+  booking_number: string;
 }
 
 interface Schedule {
@@ -77,6 +79,7 @@ interface Schedule {
   members: any[];
   rating: number;
   user: any;
+  booking_number: string;
 }
 
 interface ScheduleDetailsViewProps {
@@ -200,17 +203,23 @@ const ScheduleDetailsView: React.FC<ScheduleDetailsViewProps> = ({
             </div>
 
             {schedule.bookedBy && (
-              <div>
-                <h3 className='text-sm font-medium text-gray-500'>Booked By</h3>
-                <p className='text-lg font-semibold'>{schedule.user?.name}</p>
-                <p
-                  onClick={() => {
-                    navigation.push("/bookings");
-                  }}
-                  className='text-sm cursor-pointer font-semibold underline text-blue-500'>
-                  View Booking
-                </p>
-              </div>
+              <>
+                <div>
+                  <h3 className='text-sm font-medium text-gray-500'>Booked By</h3>
+                  <p className='text-lg font-semibold'>{schedule.user?.name}{' '}({schedule.user?.user_number})</p>
+                </div>
+                <div>
+                  <h3 className='text-sm font-medium text-gray-500'>Booking Number</h3>
+                  <p className='text-lg font-semibold'>{schedule.booking_number}</p>
+                  <p
+                    onClick={() => {
+                      navigation.push("/bookings");
+                    }}
+                    className='text-sm cursor-pointer font-semibold underline text-blue-500'>
+                    View Booking
+                  </p>
+                </div>
+              </>
             )}
 
             {schedule.blockedBy && (
@@ -533,6 +542,20 @@ const ScheduleTooltip: React.FC<TooltipProps> = ({
             <div className='bg-gray-50 p-4 rounded-lg'>
               <div className='flex justify-between items-center mb-3'>
                 <div className='flex items-center space-x-2'>
+                  <Book className='text-gray-500' size={16} />
+                  <span className='font-medium text-gray-700'>
+                    Booking Details
+                  </span>
+                </div>
+                <span className='text-xs text-gray-500'>
+                  {selectedTeam?.booking_number} 
+                </span>
+              </div>
+            </div>
+            
+            <div className='bg-gray-50 p-4 rounded-lg'>
+              <div className='flex justify-between items-center mb-3'>
+                <div className='flex items-center space-x-2'>
                   <Users className='text-gray-500' size={16} />
                   <span className='font-medium text-gray-700'>
                     Team Members
@@ -665,6 +688,9 @@ const ScheduleGroups: React.FC<{
                   {schedule.startTime} - {schedule.endTime}
                 </div>
                 <div className='text-xs truncate'>
+                  {schedule.user?.user_number}
+                </div>
+                <div className='text-xs truncate'>
                   {schedule.property?.name}
                 </div>
                 <div className='text-xs truncate'>
@@ -775,6 +801,7 @@ const ScheduleCalendar: React.FC = () => {
       members: item.members || [],
       rating: item.rating || 0,
       user: item.user || null,
+      booking_number: item.booking_number
     }));
   };
 
@@ -948,6 +975,9 @@ const ScheduleCalendar: React.FC = () => {
                               <div>{schedule.status}</div>
                               <div>
                                 {schedule.startTime} - {schedule.endTime}
+                              </div>
+                              <div>
+                                {schedule.user?.user_number}
                               </div>
                               <div className='text-xs mt-1 truncate'>
                                 {schedule.property?.name}
