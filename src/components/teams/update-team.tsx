@@ -32,7 +32,18 @@ interface Team {
   break_start_time?: string
   break_end_time?: string
   start_date: string
-  off_days: string | string[]
+  // API provides off_days as number[] and off_days_formatted as string[] (preferred for UI)
+  off_days?: number[] | string[]
+  off_days_formatted?: string[]
+  schedule_config?: {
+    off_days?: number[] | string[]
+    off_days_formatted?: string[]
+    start_time?: string
+    end_time?: string
+    break_start_time?: string
+    break_end_time?: string
+    start_date?: string
+  }
 
   members?: any[]
   services?: any[]
@@ -63,6 +74,7 @@ interface TeamData {
   work_end_time: string
   break_start_time?: string
   break_end_time?: string
+  // UI keeps off_days as day-name strings (e.g., ["monday"]) to avoid type mismatch
   off_days: string[]
   area_ids?: string[]
   district_ids: string[]
@@ -77,6 +89,29 @@ const TEAM_TYPES = [
 ]
 
 const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+// Helpers for off_days normalization
+const toDayName = (v: string | number): string | undefined => {
+  if (typeof v === "string") return v.toLowerCase()
+  if (typeof v === "number") return DAYS_OF_WEEK[v]
+  return undefined
+}
+
+const getOriginalOffDayNames = (team: Team): string[] => {
+  // Prefer formatted names provided by API
+  const formatted: unknown = (team as any).off_days_formatted ?? team.schedule_config?.off_days_formatted
+  if (Array.isArray(formatted)) {
+    return (formatted as unknown[]).map((d) => String(d).toLowerCase())
+  }
+  const raw: unknown = team.off_days ?? team.schedule_config?.off_days
+  if (Array.isArray(raw)) {
+    return (raw as unknown[])
+      .map((d) => toDayName(d as any))
+      .filter(Boolean) as string[]
+  }
+  if (typeof raw === "string") return [raw.toLowerCase()]
+  return []
+}
 
 const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose, onUpdate }) => {
   const [currentStep, setCurrentStep] = useState(1)
@@ -94,12 +129,9 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
   const [teamMembers, setTeamMembers] = useState<any[]>([])
   const [isUpdateable, setIsUpdateable] = useState(true)
 
-  // Helper function to normalize off_days
-  const normalizeOffDays = (off_days: any): string[] => {
-    if (!off_days) return []
-    if (Array.isArray(off_days)) return off_days
-    if (typeof off_days === "string") return [off_days]
-    return []
+  // Return UI-ready day-name strings using API-preferred formatted field
+  const normalizeOffDaysForUI = (team: Team): string[] => {
+    return getOriginalOffDayNames(team)
   }
 
   // Form state - Initialize with team data
@@ -116,7 +148,7 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
     work_end_time: team.work_end_time || "",
     break_start_time: team.break_start_time,
     break_end_time: team.break_end_time,
-    off_days: normalizeOffDays(team.off_days),
+    off_days: normalizeOffDaysForUI(team),
     area_ids: team.areas?.map((a: any) => a.id) || [],
     district_ids: team.districts?.map((d: any) => d.id) || [],
     property_ids: team.properties?.map((p: any) => p.id) || [],
@@ -232,15 +264,17 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
   }
 
   const hasScheduleFieldsChanged = () => {
-  return (
-    team.start_date !== teamData.start_date ||
-    team.work_start_time !== teamData.work_start_time ||
-    team.work_end_time !== teamData.work_end_time ||
-    team.break_start_time !== teamData.break_start_time ||
-    team.break_end_time !== teamData.break_end_time ||
-    JSON.stringify(team.off_days) !== JSON.stringify(teamData.off_days) // array comparison
-  );
-};
+    const origDays = getOriginalOffDayNames(team).slice().sort().join(",")
+    const currDays = (teamData.off_days || []).map((d) => d.toLowerCase()).slice().sort().join(",")
+    return (
+      (team.start_date || team.schedule_config?.start_date || "") !== (teamData.start_date || "") ||
+      (team.work_start_time || team.schedule_config?.start_time || "") !== (teamData.work_start_time || "") ||
+      (team.work_end_time || team.schedule_config?.end_time || "") !== (teamData.work_end_time || "") ||
+      (team.break_start_time || team.schedule_config?.break_start_time || "") !== (teamData.break_start_time || "") ||
+      (team.break_end_time || team.schedule_config?.break_end_time || "") !== (teamData.break_end_time || "") ||
+      origDays !== currDays
+    )
+  }
 
   const handleSubmit = async () => {
     try {
@@ -249,6 +283,11 @@ const UpdateTeamModal: React.FC<UpdateTeamModalProps> = ({ team, isOpen, onClose
       const submitData = {
         id: team.id,
         ...teamData,
+        // Ensure API receives numeric indices for off_days in correct order
+        off_days: (teamData.off_days || [])
+          .map((d) => d.toLowerCase())
+          .map((name) => DAYS_OF_WEEK.indexOf(name))
+          .filter((i) => i >= 0),
         lat: teamData.lat || undefined,
         lng: teamData.lng || undefined,
         area_ids: teamData.area_ids || undefined,

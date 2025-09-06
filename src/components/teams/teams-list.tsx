@@ -27,7 +27,9 @@ interface Team {
   break_start_time?: string
   break_end_time?: string
   start_date: string
-  off_days: string | string[] // Can be string or array
+  // off_days: number[] (e.g., [0,6]); off_days_formatted: string[] (e.g., ["sunday","saturday"]).
+  off_days?: number[] | string[]
+  off_days_formatted?: string[]
 
   members?: any[]
   services?: any[]
@@ -117,11 +119,42 @@ const TeamsList: React.FC = () => {
     }
   }
 
-  // Helper function to normalize off_days
-  const normalizeOffDays = (off_days: any): string[] => {
-    if (!off_days) return []
-    if (Array.isArray(off_days)) return off_days
-    if (typeof off_days === "string") return [off_days]
+  // Helper: produce displayable off days as string[] from mixed inputs
+  const getDisplayOffDays = (team: Team): string[] => {
+    const DAY_NAMES = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ]
+
+    // Prefer formatted values if provided on the team
+    if (Array.isArray(team.off_days_formatted) && team.off_days_formatted.length) {
+      return team.off_days_formatted
+    }
+    // Or from schedule_config
+    if (
+      Array.isArray(team.schedule_config?.off_days_formatted) &&
+      team.schedule_config!.off_days_formatted.length
+    ) {
+      return team.schedule_config!.off_days_formatted
+    }
+    // Map numeric indices to names
+    if (Array.isArray(team.off_days) && team.off_days.every((d) => typeof d === "number")) {
+      return (team.off_days as number[])
+        .map((i) => DAY_NAMES[i] ?? "")
+        .filter(Boolean)
+    }
+    // Already strings
+    if (Array.isArray(team.off_days) && team.off_days.every((d) => typeof d === "string")) {
+      return team.off_days as string[]
+    }
+    if (typeof (team as any).off_days === "string") {
+      return [(team as any).off_days as string]
+    }
     return []
   }
 
@@ -137,7 +170,9 @@ const TeamsList: React.FC = () => {
     startTransition(async () => {
       try {
         const teams = await TeamsAction(page, itemsPerPage, searchTerm)
+        debugger
         const normalizedTeams = (teams.data || []).map(normalizeTeamData)
+        debugger
         setTeams(normalizedTeams)
         setPagination(teams.pagination)
       } catch (error) {
@@ -277,7 +312,7 @@ const TeamsList: React.FC = () => {
   )
 
   const TeamCard = ({ team }: { team: Team }) => {
-    const offDays = normalizeOffDays(team.off_days)
+    const offDays = getDisplayOffDays(team)
     const membersCount = team.team_summary?.members_count || team.members?.length || 0
     const servicesCount = team.team_summary?.services_count || team.services?.length || 0
     const districtsCount = team.location_summary?.districts_count || team.districts?.length || 0
@@ -374,7 +409,7 @@ const TeamsList: React.FC = () => {
                   key={index}
                   className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full"
                 >
-                  {day.slice(0, 3)}
+                  {String(day).slice(0, 3)}
                 </span>
               ))}
               {offDays.length > 3 && (
@@ -525,7 +560,7 @@ const TeamsList: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTeams.map((team) => {
-                  const offDays = normalizeOffDays(team.off_days)
+                  const offDays = getDisplayOffDays(team)
                   const membersCount = team.team_summary?.members_count || team.members?.length || 0
                   const servicesCount = team.team_summary?.services_count || team.services?.length || 0
 
@@ -559,7 +594,7 @@ const TeamsList: React.FC = () => {
                               key={index}
                               className="inline-flex px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full"
                             >
-                              {day.slice(0, 3)}
+                              {String(day).slice(0, 3)}
                             </span>
                           ))}
                           {offDays.length > 2 && (
