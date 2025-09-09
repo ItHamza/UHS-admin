@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL =
-  "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
+  "http://ec2-3-28-198-66.me-central-1.compute.amazonaws.com/api/v1";
 
 async function fetchProperty(districtId?: string | null) {
   const url = districtId
@@ -83,4 +83,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

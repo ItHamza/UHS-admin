@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import moment from "moment";
 
 const BASE_URL =
-  "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com/api/v1";
+  "http://ec2-3-28-198-66.me-central-1.compute.amazonaws.com/api/v1";
 
 async function fetchBookings(page: number, limit: number, service_ids: string[], search: string) {
   const params = new URLSearchParams();
