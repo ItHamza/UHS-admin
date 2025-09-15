@@ -1,10 +1,11 @@
+// useSocket.ts
 'use client'
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = "http://ec2-3-28-58-24.me-central-1.compute.amazonaws.com";
+const SOCKET_URL = "https://backend.urbanservices-qa.com";
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);

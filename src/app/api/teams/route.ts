@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BASE_URL =
-  "http://ec2-3-28-198-66.me-central-1.compute.amazonaws.com/api/v1";
+  "https://backend.urbanservices-qa.com/api/v1";
 const BASE_URLV2 =
-  "http://ec2-3-28-198-66.me-central-1.compute.amazonaws.com/api/v2";
+  "https://backend.urbanservices-qa.com/api/v2";
 
 export async function GET(request: Request) {
   try {
