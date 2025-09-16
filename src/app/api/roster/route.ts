@@ -97,13 +97,13 @@ export async function GET(req: NextRequest) {
           is_blocked: schedule.is_blocked,
           is_available: schedule?.is_available || false,
           team_id: schedule.team_id,
-          apartment_number: schedule.Bookings[0].appartment_number || schedule.apartment_number,
+          apartment_number: schedule.Bookings[0]?.appartment_number || schedule.apartment_number,
           area: schedule.Area,
           district: schedule.District,
           property: schedule.Property,
           residence_type: schedule.ResidenceType,
           user: schedule.Bookings[0]?.user || null,
-          booking_number: schedule.Bookings[0].booking_number || null,
+          booking_number: schedule.Bookings[0]?.booking_number || null,
         };
       })
     );
