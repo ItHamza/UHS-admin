@@ -181,12 +181,21 @@ function TimelineView({ notifications, markAsRead }: CurrentViewComponentProps) 
                 <div className="px-4 pb-4">
                   <div className="space-y-2">
                     {Object.entries(notification.metadata).map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-2 text-sm">
-                        <Badge variant="outline">
+                      <div key={key} className="p-2 bg-gray-50 rounded">
+                        <div className="font-medium text-xs text-gray-500 uppercase tracking-wide">
                           {key.replace('_', ' ')}
-                        </Badge>
-                        <span className="text-gray-900">
-                          {typeof value === 'object' && value !== null ? (
+                        </div>
+                        <div className="font-medium text-gray-900">
+                          {Array.isArray(value) && value.length && key === 'weekdays' ? (
+                            <ul className="space-y-1">
+                              {value.map((weekday, index) => (
+                                <li key={index}>
+                                  <span className="font-semibold">{weekday.day}:</span> {weekday.start_time} - {weekday.end_time}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            typeof value === 'object' && value !== null ? (
                               <ul className="space-y-1">
                                 {Object.entries(value).map(([subKey, subValue]) => (
                                   <li key={subKey}>
@@ -196,8 +205,9 @@ function TimelineView({ notifications, markAsRead }: CurrentViewComponentProps) 
                               </ul>
                             ) : (
                               value
-                            )}
-                        </span>
+                            )
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -308,16 +318,26 @@ function TabbedView({ notifications, markAsRead }: CurrentViewComponentProps) {
                               {key.replace('_', ' ')}
                             </div>
                             <div className="font-medium text-gray-900">
-                              {typeof value === 'object' && value !== null ? (
+                              {Array.isArray(value) && value.length && key === 'weekdays' ? (
                                 <ul className="space-y-1">
-                                  {Object.entries(value).map(([subKey, subValue]) => (
-                                    <li key={subKey}>
-                                      <span className="font-semibold">{subKey}:</span> {String(subValue)}
+                                  {value.map((weekday, index) => (
+                                    <li key={index}>
+                                      <span className="font-semibold">{weekday.day}:</span> {weekday.start_time} - {weekday.end_time}
                                     </li>
                                   ))}
                                 </ul>
                               ) : (
-                                value
+                                typeof value === 'object' && value !== null ? (
+                                  <ul className="space-y-1">
+                                    {Object.entries(value).map(([subKey, subValue]) => (
+                                      <li key={subKey}>
+                                        <span className="font-semibold">{subKey}:</span> {String(subValue)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  value
+                                )
                               )}
                             </div>
                           </div>
@@ -399,12 +419,21 @@ function CompactListView({ notifications, markAsRead }: CurrentViewComponentProp
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {Object.entries(notification.metadata).map(([key, value]) => (
-                      <div key={key} className="text-sm">
-                        <div className="text-gray-500 capitalize">
+                      <div key={key} className="p-2 bg-gray-50 rounded">
+                        <div className="font-medium text-xs text-gray-500 uppercase tracking-wide">
                           {key.replace('_', ' ')}
                         </div>
                         <div className="font-medium text-gray-900">
-                          {typeof value === 'object' && value !== null ? (
+                          {Array.isArray(value) && value.length && key === 'weekdays' ? (
+                            <ul className="space-y-1">
+                              {value.map((weekday, index) => (
+                                <li key={index}>
+                                  <span className="font-semibold">{weekday.day}:</span> {weekday.start_time} - {weekday.end_time}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            typeof value === 'object' && value !== null ? (
                               <ul className="space-y-1">
                                 {Object.entries(value).map(([subKey, subValue]) => (
                                   <li key={subKey}>
@@ -414,7 +443,8 @@ function CompactListView({ notifications, markAsRead }: CurrentViewComponentProp
                               </ul>
                             ) : (
                               value
-                            )}
+                            )
+                          )}
                         </div>
                       </div>
                     ))}
@@ -442,6 +472,7 @@ export default function NotificationsPage() {
     markAllAsRead,
   } = useNotificationStore();
   const [loading, setLoading] = useState(true)
+  const unreadCount = notifications.filter(n => !n.read).length
 
   useEffect(() => {
     let cancelled = false
@@ -496,6 +527,15 @@ export default function NotificationsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-4xl font-bold text-gray-900">Notifications</h1>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAll}
+              disabled={unreadCount === 0}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Mark all read
+            </Button>
             {views.map(view => (
               <Button
                 key={view.id}
